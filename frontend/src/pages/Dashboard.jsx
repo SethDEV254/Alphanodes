@@ -167,13 +167,19 @@ export default function Dashboard() {
     const bnbAmt = usd / bnbPrice;
     setLoading('deposit');
     try {
-      // Auto-register on-chain if first time
-      if (onChainBal && !onChainBal.exists) {
-        showMsg('Setting up your account...');
-        const ref = new URLSearchParams(window.location.search).get('ref') || ZERO_ADDRESS;
-        const regHash = await contract.register(ref);
-        showMsg('Account setup confirmed! Processing deposit...');
-        await waitForTx(regHash);
+      // Auto-register on-chain if not yet registered (or if read is still loading)
+      if (!onChainBal?.exists) {
+        showMsg('Setting up your account on-chain...');
+        try {
+          const ref = new URLSearchParams(window.location.search).get('ref') || ZERO_ADDRESS;
+          const regHash = await contract.register(ref);
+          showMsg('Account ready! Processing deposit...');
+          await waitForTx(regHash);
+        } catch (regErr) {
+          // "Already registered" is fine — just proceed to deposit
+          const msg = regErr?.shortMessage || regErr?.message || '';
+          if (!msg.toLowerCase().includes('already')) throw regErr;
+        }
       }
       await contract.deposit(bnbAmt);
       showMsg('Deposit sent! Trading balance will update shortly.');
