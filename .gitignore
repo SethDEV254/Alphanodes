@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.local
+.vercel
+*.log
+.DS_Store
+.idea
+cache
+artifacts/build-info
