@@ -4,4 +4,15 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    include: ['@walletconnect/ethereum-provider'],
+  },
+  build: {
+    rolldownOptions: {
+      external: [],
+    },
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
+  },
 });
