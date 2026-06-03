@@ -5,6 +5,10 @@ import ABI from '../contracts/AlphaNodes.json';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+// Safely convert any number to a fixed-point string for parseEther
+// Avoids scientific notation (e.g. 1.66e-3) which parseEther can't handle
+const toWei = (n) => parseEther(Number(n).toFixed(18));
+
 export function useAlphaNodes() {
   const { writeContractAsync } = useWriteContract();
 
@@ -13,17 +17,17 @@ export function useAlphaNodes() {
 
   return {
     register: (referrer) => call('register', [referrer || ZERO_ADDRESS]),
-    deposit: (amountEth) => call('deposit', [], { value: parseEther(String(amountEth)) }),
-    requestWithdrawal: (amountEth) => call('requestWithdrawal', [parseEther(String(amountEth))]),
+    deposit: (amountEth) => call('deposit', [], { value: toWei(amountEth) }),
+    requestWithdrawal: (amountEth) => call('requestWithdrawal', [toWei(amountEth)]),
     claimWithdrawal: (id) => call('claimWithdrawal', [BigInt(id)]),
     investBalance: (packageId, amountEth) =>
-      call('investBalance', [BigInt(packageId), parseEther(String(amountEth))]),
+      call('investBalance', [BigInt(packageId), toWei(amountEth)]),
     claimAIEarnings: (id) => call('claimAIEarnings', [BigInt(id)]),
     stake: (amountEth, durationDays) =>
-      call('stake', [parseEther(String(amountEth)), BigInt(durationDays)]),
+      call('stake', [toWei(amountEth), BigInt(durationDays)]),
     unstake: (id) => call('unstake', [BigInt(id)]),
     earlyUnlock: (id) => call('earlyUnlock', [BigInt(id)]),
-    fundContract: (amountEth) => call('fundContract', [], { value: parseEther(String(amountEth)) }),
+    fundContract: (amountEth) => call('fundContract', [], { value: toWei(amountEth) }),
   };
 }
 
