@@ -96,11 +96,11 @@ input:focus, select:focus {
 }
 
 @keyframes pageSlideDown {
-  from { opacity: 0; transform: translateY(-24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .page-enter {
-  animation: pageSlideDown 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pageSlideDown 0.28s ease both;
 }
 
 /* ── Responsive grid helpers ── */
