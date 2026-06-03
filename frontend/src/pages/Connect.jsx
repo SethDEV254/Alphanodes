@@ -252,6 +252,8 @@ async function clearStaleWCSessions() {
   } catch (_) {}
 }
 
+const DAPP_URL = 'alphanodes-app.vercel.app';
+
 export default function Connect() {
   const { open } = useWeb3Modal();
   const { isConnected } = useAccount();
@@ -267,6 +269,10 @@ export default function Connect() {
   const [username, setUsername] = useState(
     () => localStorage.getItem('alphanodes_pending_username') || ''
   );
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const hasWallet = typeof window !== 'undefined' && !!window.ethereum;
+  const showMobileGate = isMobile && !hasWallet;
 
   const activeAv = AVATARS.find(a => a.id === selectedAvatar);
 
@@ -319,6 +325,91 @@ export default function Connect() {
     if (isConnected) navigate('/dashboard');
   }, [isConnected, navigate]);
 
+  if (showMobileGate) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: '#0d0d0d',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: '32px 24px', textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px', marginBottom: 8, fontFamily: "'Outfit', sans-serif" }}>
+          Alpha<span style={{ color: '#fcd535', fontWeight: 300 }}>Nodes</span>
+        </div>
+        <div style={{ fontSize: 13, color: '#555', marginBottom: 40 }}>AI-Powered DeFi on BSC</div>
+
+        <div style={{
+          width: 72, height: 72, borderRadius: 20, marginBottom: 24,
+          background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fcd535" strokeWidth="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+
+        <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 10 }}>Open in a Wallet Browser</div>
+        <div style={{ fontSize: 13, color: '#555', lineHeight: 1.7, marginBottom: 36, maxWidth: 300 }}>
+          This is a dApp. To use it on mobile, open it inside a Web3 wallet browser.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 320 }}>
+          <a
+            href={`https://metamask.app.link/dapp/${DAPP_URL}`}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              padding: '15px 24px', borderRadius: 14, textDecoration: 'none',
+              background: 'linear-gradient(135deg, #f6851b, #e2761b)',
+              color: '#fff', fontWeight: 800, fontSize: 15,
+              boxShadow: '0 4px 20px rgba(246,133,27,0.35)',
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 35 33" fill="none">
+              <path d="M32.958 1L19.163 11.088l2.531-5.937L32.958 1z" fill="#E17726" stroke="#E17726" strokeWidth=".25" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2.042 1l13.668 10.178-2.403-6.027L2.042 1z" fill="#E27625" stroke="#E27625" strokeWidth=".25" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Open in MetaMask
+          </a>
+
+          <a
+            href={`https://link.trustwallet.com/open_url?coin_id=20000714&url=https://${DAPP_URL}`}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              padding: '15px 24px', borderRadius: 14, textDecoration: 'none',
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+              color: '#fff', fontWeight: 800, fontSize: 15,
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" fill="#3375BB"/>
+              <path d="M12 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 10c-2.21 0-4-1.79-4-4h2c0 1.1.9 2 2 2s2-.9 2-2h2c0 2.21-1.79 4-4 4z" fill="#fff"/>
+            </svg>
+            Open in Trust Wallet
+          </a>
+
+          <button
+            onClick={async () => { await clearStaleWCSessions(); open(); }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              padding: '15px 24px', borderRadius: 14, border: '1px solid rgba(252,213,53,0.3)',
+              background: 'rgba(252,213,53,0.06)', color: '#fcd535',
+              fontWeight: 800, fontSize: 15, cursor: 'pointer',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="6" width="20" height="14" rx="2"/>
+              <path d="M2 10h20"/><path d="M16 14h.01" strokeWidth="3" strokeLinecap="round"/>
+            </svg>
+            WalletConnect
+          </button>
+        </div>
+
+        <div style={{ marginTop: 40, fontSize: 11, color: '#333' }}>
+          BSC Mainnet · Non-Custodial · Smart Contract Secured
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={vantaRef}
@@ -345,17 +436,18 @@ export default function Connect() {
         </p>
 
         {/* Stats row */}
-        <div style={{
-          display: 'inline-flex', gap: 0, marginTop: 24, marginBottom: 32,
+        <div className="stats-grid" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0,
+          marginTop: 24, marginBottom: 32,
           background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 12, overflow: 'hidden',
+          borderRadius: 12, overflow: 'hidden', width: '100%', maxWidth: 420,
         }}>
           {[['$4.2M+','TVL'], ['12K+','Users'], ['2%','Daily APY'], ['99.9%','Uptime']].map(([val, lbl], i, arr) => (
             <div key={lbl} style={{
-              padding: '12px 20px', textAlign: 'center',
+              padding: '12px 10px', textAlign: 'center',
               borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
             }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#fcd535', fontFamily: "'Outfit', sans-serif" }}>{val}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#fcd535', fontFamily: "'Outfit', sans-serif" }}>{val}</div>
               <div style={{ fontSize: 9, color: '#444', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>{lbl}</div>
             </div>
           ))}

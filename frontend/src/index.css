@@ -91,6 +91,10 @@ input:focus, select:focus {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .hero-title { font-size: 38px !important; letter-spacing: -1px !important; }
   .hero-features { grid-template-columns: 1fr !important; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stats-grid > div { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .stats-grid > div:nth-child(odd) { border-right: 1px solid rgba(255,255,255,0.05) !important; }
+  .stats-grid > div:nth-last-child(-n+2) { border-bottom: none; }
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
