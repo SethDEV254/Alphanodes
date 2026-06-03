@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
-import {
-  getTransactions, compound, getAiInvestments,
-  getAiPackages, createAiInvestment,
-} from '../api.js';
+import { getTransactions, compound, getAiInvestments } from '../api.js';
 import { useAlphaNodes } from '../hooks/useContract.js';
 
 const fmt = (n) => (n || 0).toFixed(4);
@@ -75,6 +72,7 @@ function IconBox({ color, size = 40, children }) {
 
 export default function Dashboard() {
   const { address, user, balance, refreshBalance, bnbPrice } = useApp();
+  const navigate = useNavigate();
   const [txs, setTxs] = useState([]);
   const [depositAmt, setDepositAmt] = useState('');
   const [withdrawAmt, setWithdrawAmt] = useState('');
@@ -82,9 +80,6 @@ export default function Dashboard() {
   const [msg, setMsg] = useState('');
   const [activeTab, setActiveTab] = useState('deposit');
   const [showFundsModal, setShowFundsModal] = useState(false);
-  const [packages, setPackages] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [investAmt, setInvestAmt] = useState('');
   const [activeInvestments, setActiveInvestments] = useState([]);
   const [liveAiPending, setLiveAiPending] = useState(0);
   const [tick, setTick] = useState(0);
@@ -104,14 +99,6 @@ export default function Dashboard() {
       .then(data => { if (data.result) setWalletBnb(Number(BigInt(data.result)) / 1e18); })
       .catch(() => {});
   }, [wagmiAddress]);
-
-  useEffect(() => {
-    getAiPackages().then(r => {
-      const pkgs = r.data.data || [];
-      setPackages(pkgs);
-      if (pkgs.length > 0) setSelected(pkgs[0]);
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (address) { fetchTxs(); fetchActiveInvestments(); }
@@ -206,31 +193,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleInvest = async () => {
-    if (!selected) return showMsg('Select a package', true);
-    const amt = parseFloat(investAmt);
-    if (!amt || amt <= 0) return showMsg('Enter a valid amount', true);
-    if (amt > (balance?.tradingBalance || 0)) return showMsg('Insufficient trading balance', true);
-    if (selected.maxAmount && amt > selected.maxAmount)
-      return showMsg(`Max for ${selected.name} is ${selected.maxAmount} BNB`, true);
-    if (amt < selected.minAmount)
-      return showMsg(`Min for ${selected.name} is ${selected.minAmount} BNB`, true);
-    setLoading('invest');
-    try {
-      const r = await createAiInvestment({ address, packageId: selected._id, amount: amt });
-      if (!r.data.success) return showMsg(r.data.error || 'Investment failed', true);
-      showMsg(`${selected.name} investment started!`);
-      setInvestAmt('');
-      refreshBalance();
-      fetchTxs();
-      fetchActiveInvestments();
-    } catch (e) {
-      showMsg('Investment failed', true);
-    } finally {
-      setLoading('');
-    }
-  };
-
   const bal = balance || {};
   const tradingBal = bal.tradingBalance || 0;
   const totalWithdrawn = bal.totalWithdrawn || 0;
@@ -243,16 +205,11 @@ export default function Dashboard() {
   const firstInvestment = activeInvestments[0];
   const activeRate = firstInvestment?.dailyRateBps
     ? (firstInvestment.dailyRateBps / 100).toFixed(1)
-    : selected?.dailyRate;
+    : null;
 
   const earningsProgress = (totalEarnings + totalWithdrawn) > 0
     ? Math.min(100, (totalEarnings / (totalEarnings + totalWithdrawn)) * 100)
     : 0;
-
-  const dailyEst = selected && investAmt
-    ? ((parseFloat(investAmt) || 0) * (selected.dailyRate || 0) / 100).toFixed(4) : null;
-  const totalEst = selected && investAmt
-    ? ((parseFloat(investAmt) || 0) * (selected.dailyRate || 0) / 100 * selected.duration).toFixed(4) : null;
 
   return (
     <div>
@@ -708,78 +665,106 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* AI Packages */}
+      {/* Strategy Cards */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1 }}>
-          AI Investment Packages
+          Trading Strategies
         </div>
-        <div className="grid-3" style={{ marginBottom: 10 }}>
-          {packages.map(pkg => {
-            const isSel = selected?._id === pkg._id;
-            return (
-              <div
-                key={pkg._id}
-                onClick={() => { setSelected(pkg); setInvestAmt(''); }}
-                className="card"
-                style={{
-                  padding: '12px 14px', cursor: 'pointer', transition: 'all 0.18s',
-                  border: isSel ? '1.5px solid #fcd535' : '1px solid rgba(252,213,53,0.06)',
-                  background: isSel ? 'rgba(252,213,53,0.06)' : 'rgba(255,255,255,0.02)',
-                  position: 'relative', overflow: 'hidden',
-                }}
-              >
-                {isSel && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,#fcd535,#ff8c00)' }} />
-                )}
-                <div style={{ fontSize: 11, fontWeight: 800, color: isSel ? '#fcd535' : '#ccc', marginBottom: 4 }}>
-                  {pkg.name}
+        <div className="grid-2" style={{ marginBottom: 0 }}>
+          {[
+            {
+              label: 'AI Agents',
+              path: '/ai-agents',
+              color: '#fcd535',
+              desc: 'Automated AI trading up to 2%/day',
+              stat: `+${fmt(aiEarnings)} BNB`,
+              statLabel: 'earned',
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="8" r="4"/><path d="M2 20c0-4 4-7 10-7s10 3 10 7"/>
+                  <path d="M12 4V2m-4 6H6m12 0h-2"/>
+                </svg>
+              ),
+            },
+            {
+              label: 'Copy Trading',
+              path: '/copy-trading',
+              color: '#818cf8',
+              desc: 'Mirror top traders automatically',
+              stat: null,
+              statLabel: 'active',
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              ),
+            },
+            {
+              label: 'Staking',
+              path: '/staking',
+              color: '#00c076',
+              desc: 'Lock BNB · earn up to 2.8%/day',
+              stat: `+${fmt(stakingEarnings)} BNB`,
+              statLabel: 'earned',
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              ),
+            },
+            {
+              label: 'Manual Trading',
+              path: '/trading',
+              color: '#3b9eff',
+              desc: 'Long / short with up to 100x leverage',
+              stat: null,
+              statLabel: 'positions',
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                  <polyline points="16 7 22 7 22 13"/>
+                </svg>
+              ),
+            },
+          ].map(({ label, path, color, desc, stat, statLabel, icon }) => (
+            <div
+              key={path}
+              onClick={() => navigate(path)}
+              className="card"
+              style={{
+                padding: '16px', cursor: 'pointer', transition: 'all 0.18s',
+                borderTop: `2px solid ${color}`,
+                position: 'relative', overflow: 'hidden',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 28px ${color}18`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: `${color}15`, border: `1px solid ${color}25`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color,
+                }}>
+                  {icon}
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#00c076', lineHeight: 1 }}>
-                  {pkg.dailyRate}%
-                  <span style={{ fontSize: 9, color: '#555', fontWeight: 400 }}>/d</span>
-                </div>
-                <div style={{ fontSize: 9, color: '#555', marginTop: 4 }}>
-                  {pkg.duration}d · {(pkg.dailyRate * pkg.duration).toFixed(0)}% total
+                <div style={{ textAlign: 'right' }}>
+                  {stat && <div style={{ fontSize: 12, fontWeight: 800, color }}>{stat}</div>}
+                  <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: 0.8 }}>{statLabel}</div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-        {selected && (
-          <div className="card" style={{ padding: '14px 16px' }}>
-            <div style={{ fontSize: 10, color: '#555', marginBottom: 8 }}>
-              <span style={{ color: '#fcd535', fontWeight: 700 }}>{selected.name}</span>
-              {' · '}Available:{' '}
-              <span style={{ color: '#3b9eff', fontWeight: 700 }}>{fmt(tradingBal)} BNB</span>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="number"
-                placeholder={`${selected.minAmount}–${selected.maxAmount} BNB`}
-                value={investAmt}
-                onChange={e => setInvestAmt(e.target.value)}
-                style={{
-                  flex: 1, background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
-                  padding: '9px 12px', color: '#fff', fontSize: 12, outline: 'none',
-                }}
-              />
-              <button
-                className="btn-primary"
-                onClick={handleInvest}
-                disabled={loading === 'invest'}
-                style={{ whiteSpace: 'nowrap', fontSize: 12 }}
-              >
-                {loading === 'invest' ? 'Starting...' : 'Deploy'}
-              </button>
-            </div>
-            {dailyEst && (
-              <div style={{ fontSize: 11, color: '#00c076', fontWeight: 700, marginTop: 8 }}>
-                +{dailyEst}/day · +{totalEst} total ({selected.duration}d)
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 10, color: '#555', lineHeight: 1.5 }}>{desc}</div>
+              <div style={{
+                position: 'absolute', right: 14, bottom: 14,
+                fontSize: 11, color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
+              }}>
+                Open <span style={{ fontSize: 13 }}>→</span>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Transactions */}
