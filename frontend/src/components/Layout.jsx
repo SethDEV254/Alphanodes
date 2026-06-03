@@ -191,22 +191,20 @@ export default function Layout() {
 
       {/* Mobile top bar */}
       <div className="mobile-topbar">
+        <button
+          onClick={() => setSidebarOpen(o => !o)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#fff', display: 'flex', flexDirection: 'column', gap: 4 }}
+          aria-label="Menu"
+        >
+          <span style={{ display: 'block', width: 20, height: 2, background: sidebarOpen ? '#fcd535' : '#fff', borderRadius: 1, transition: 'all 0.2s', transform: sidebarOpen ? 'rotate(45deg) translate(4px, 4px)' : 'none' }} />
+          <span style={{ display: 'block', width: 20, height: 2, background: '#fff', borderRadius: 1, transition: 'all 0.2s', opacity: sidebarOpen ? 0 : 1 }} />
+          <span style={{ display: 'block', width: 20, height: 2, background: sidebarOpen ? '#fcd535' : '#fff', borderRadius: 1, transition: 'all 0.2s', transform: sidebarOpen ? 'rotate(-45deg) translate(4px, -4px)' : 'none' }} />
+        </button>
         <div style={{ fontSize: 18, fontWeight: 800, color: '#fcd535', fontFamily: "'Outfit', sans-serif" }}>
           Alpha<span style={{ color: '#fff', fontWeight: 300 }}>Nodes</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 11, color: '#fcd535', fontWeight: 700, background: 'rgba(252,213,53,0.08)', padding: '4px 8px', borderRadius: 6 }}>
-            {shortAddr}
-          </div>
-          <button
-            onClick={() => setSidebarOpen(o => !o)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#fff', display: 'flex', flexDirection: 'column', gap: 4 }}
-            aria-label="Menu"
-          >
-            <span style={{ display: 'block', width: 20, height: 2, background: sidebarOpen ? '#fcd535' : '#fff', borderRadius: 1, transition: 'all 0.2s', transform: sidebarOpen ? 'rotate(45deg) translate(4px, 4px)' : 'none' }} />
-            <span style={{ display: 'block', width: 20, height: 2, background: '#fff', borderRadius: 1, transition: 'all 0.2s', opacity: sidebarOpen ? 0 : 1 }} />
-            <span style={{ display: 'block', width: 20, height: 2, background: sidebarOpen ? '#fcd535' : '#fff', borderRadius: 1, transition: 'all 0.2s', transform: sidebarOpen ? 'rotate(-45deg) translate(4px, -4px)' : 'none' }} />
-          </button>
+        <div style={{ fontSize: 11, color: '#fcd535', fontWeight: 700, background: 'rgba(252,213,53,0.08)', padding: '4px 8px', borderRadius: 6 }}>
+          {shortAddr}
         </div>
       </div>
 

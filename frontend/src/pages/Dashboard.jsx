@@ -403,7 +403,7 @@ export default function Dashboard() {
           style={{
             position: 'fixed', inset: 0, zIndex: 300,
             background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
             padding: '0 0 0 0',
           }}
         >
@@ -413,8 +413,8 @@ export default function Dashboard() {
             style={{
               width: '100%', maxWidth: 480,
               background: '#111',
-              borderBottom: `2px solid ${activeTab === 'deposit' ? '#fcd535' : '#00c076'}`,
-              borderRadius: '0 0 18px 18px',
+              borderTop: `2px solid ${activeTab === 'deposit' ? '#fcd535' : '#00c076'}`,
+              borderRadius: '18px 18px 0 0',
               boxShadow: '0 -12px 48px rgba(0,0,0,0.6)',
               overflow: 'hidden',
             }}
