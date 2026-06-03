@@ -325,6 +325,15 @@ export default function Connect() {
     if (isConnected) navigate('/dashboard');
   }, [isConnected, navigate]);
 
+  // Auto-trigger wallet connect when inside MetaMask / Trust Wallet in-app browser
+  useEffect(() => {
+    if (isConnected || showMobileGate) return;
+    if (isMobile && hasWallet) {
+      const t = setTimeout(() => open(), 600);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   if (showMobileGate) {
     return (
       <div style={{
