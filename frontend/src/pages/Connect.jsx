@@ -332,7 +332,7 @@ export default function Connect() {
         position: 'relative', zIndex: 1,
       }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00c076', boxShadow: '0 0 8px #00c076', display: 'inline-block' }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', letterSpacing: 2, textTransform: 'uppercase' }}>Live on BSC Mainnet</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', letterSpacing: 2, textTransform: 'uppercase' }}>Live on BSC Mainnet ✦</span>
       </div>
 
       {/* Hero */}
