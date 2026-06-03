@@ -482,7 +482,7 @@ export default function Dashboard() {
 
                 {/* Quick amounts */}
                 <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                  {[1, 10, 50, 100].map(v => (
+                  {[1, 25, 100, 500].map(v => (
                     <button
                       key={v}
                       onClick={() => setDepositAmt(String(v))}
