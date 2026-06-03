@@ -61,6 +61,38 @@ export function useUserBalance(address) {
   return { balance, refetch };
 }
 
+// Read on-chain balance directly via RPC (bypasses wagmi cache for instant refresh)
+export async function fetchOnChainBalance(address, contractAddress) {
+  if (!address || !contractAddress) return null;
+  try {
+    // getUser(address) - function selector
+    const selector = '0x6f77926b';
+    const paddedAddr = address.slice(2).padStart(64, '0');
+    const res = await fetch('https://bsc-dataseed.binance.org/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', method: 'eth_call',
+        params: [{ to: contractAddress, data: selector + paddedAddr }, 'latest'],
+        id: 1,
+      }),
+    });
+    const json = await res.json();
+    if (!json.result || json.result === '0x') return null;
+    // Decode: exists(bool), referrer(address), totalDeposited, totalWithdrawn, tradingBalance, aiEarnings, referralEarnings
+    const hex = json.result.slice(2);
+    const slot = (i) => BigInt('0x' + (hex.slice(i * 64, i * 64 + 64) || '0'));
+    return {
+      exists: slot(0) === 1n,
+      tradingBalance: Number(slot(4)) / 1e18,
+      aiEarnings: Number(slot(5)) / 1e18,
+      referralEarnings: Number(slot(6)) / 1e18,
+      totalDeposited: Number(slot(2)) / 1e18,
+      totalWithdrawn: Number(slot(3)) / 1e18,
+    };
+  } catch { return null; }
+}
+
 export function useUserInvestments(address) {
   const { data: ids, refetch: refetchIds } = useReadContract({
     address: CONTRACT_ADDRESS,

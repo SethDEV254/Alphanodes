@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
 import { getTransactions, compound, getAiInvestments } from '../api.js';
-import { useAlphaNodes, useUserBalance } from '../hooks/useContract.js';
+import { useAlphaNodes, useUserBalance, fetchOnChainBalance } from '../hooks/useContract.js';
+import { CONTRACT_ADDRESS } from '../config.js';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 const BSC_RPC = 'https://bsc-dataseed.binance.org/';
@@ -104,7 +105,8 @@ export default function Dashboard() {
 
   const contract = useAlphaNodes();
   const { address: wagmiAddress } = useAccount();
-  const { balance: onChainBal } = useUserBalance(wagmiAddress);
+  const { balance: onChainBal, refetch: refetchOnChain } = useUserBalance(wagmiAddress);
+  const [liveBalance, setLiveBalance] = useState(null);
   const [walletBnb, setWalletBnb] = useState(0);
 
   useEffect(() => {
@@ -181,12 +183,19 @@ export default function Dashboard() {
           if (!msg.toLowerCase().includes('already')) throw regErr;
         }
       }
-      await contract.deposit(bnbAmt);
-      showMsg('Deposit sent! Trading balance will update shortly.');
+      showMsg('Confirm in wallet...');
+      const depositHash = await contract.deposit(bnbAmt);
+      showMsg('Transaction sent! Waiting for confirmation...');
+      await waitForTx(depositHash);
+      // Instantly reflect on-chain balance
+      const fresh = await fetchOnChainBalance(wagmiAddress, CONTRACT_ADDRESS);
+      if (fresh) setLiveBalance(fresh);
+      showMsg('Deposit confirmed! Trading balance updated.');
       setDepositAmt('');
+      setShowFundsModal(false);
       refreshBalance();
       fetchTxs();
-      setTimeout(refreshBalance, 4000);
+      await refetchOnChain();
     } catch (e) {
       showMsg(e.shortMessage || e.message || 'Transaction failed', true);
     } finally {
@@ -226,7 +235,8 @@ export default function Dashboard() {
     }
   };
 
-  const bal = balance || {};
+  // Prefer live on-chain balance (updated instantly after tx) over API balance
+  const bal = liveBalance || onChainBal || balance || {};
   const tradingBal = bal.tradingBalance || 0;
   const totalWithdrawn = bal.totalWithdrawn || 0;
   const aiEarnings = (bal.aiEarnings || 0) + liveAiPending;

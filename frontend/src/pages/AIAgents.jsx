@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
 import { getAiInvestments, compoundAiInvestment } from '../api.js';
+import { useAlphaNodes, useUserBalance } from '../hooks/useContract.js';
+import NeuralNetwork from '../components/NeuralNetwork.jsx';
 
 const fmtUsd = (n) => n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
-import { useAlphaNodes } from '../hooks/useContract.js';
-import NeuralNetwork from '../components/NeuralNetwork.jsx';
 
 const fmt = (n) => (n || 0).toFixed(4);
 const ICONS = { 'alpha-x': '◈', core: '◎', max: '⬡' };
@@ -168,6 +169,8 @@ function CoinDropdown({ value, onChange }) {
 
 export default function AIAgents() {
   const { address, balance, refreshBalance, bnbPrice } = useApp();
+  const { address: wagmiAddress } = useAccount();
+  const { balance: onChainBal } = useUserBalance(wagmiAddress);
   const contract = useAlphaNodes();
   const [investments, setInvestments] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -206,7 +209,7 @@ export default function AIAgents() {
     if (selected.maxUsd !== null && usd > selected.maxUsd)
       return showMsg(`Max for ${selected.name} is $${selected.maxUsd}`, true);
     const bnbAmt = usd / bnbPrice;
-    if (bnbAmt > (balance?.tradingBalance || 0))
+    if (bnbAmt > tradingBal)
       return showMsg('Insufficient trading balance', true);
     setLoading('deploy');
     try {
@@ -256,7 +259,7 @@ export default function AIAgents() {
 
   const active = investments.filter(i => i.status === 'active');
   const completed = investments.filter(i => i.status !== 'active');
-  const tradingBal = balance?.tradingBalance || 0;
+  const tradingBal = onChainBal?.tradingBalance ?? balance?.tradingBalance ?? 0;
   const tradingUsd = (tradingBal * bnbPrice).toFixed(2);
   const usdAmt = parseFloat(amount) || 0;
   const bnbEquiv = usdAmt > 0 ? (usdAmt / bnbPrice).toFixed(6) : null;
