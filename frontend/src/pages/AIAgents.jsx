@@ -305,7 +305,7 @@ export default function AIAgents() {
                   {pkg.dailyRate}%<span style={{ fontSize: 10, fontWeight: 400, color: '#555' }}>/day</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#555' }}>
+              <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#555', marginBottom: 8 }}>
                 <span style={{ color: '#fcd535', fontWeight: 600 }}>
                   {fmtUsd(pkg.minUsd)}–{pkg.maxUsd !== null ? fmtUsd(pkg.maxUsd) : 'Max'}
                 </span>
@@ -313,6 +313,13 @@ export default function AIAgents() {
                 <span>{pkg.duration}d</span>
                 <span>·</span>
                 <span style={{ color: '#00c076', fontWeight: 700 }}>{(pkg.dailyRate * pkg.duration).toFixed(0)}% total</span>
+              </div>
+              <div style={{
+                fontSize: 10, fontWeight: 700, color: isSel ? '#fcd535' : '#333',
+                textTransform: 'uppercase', letterSpacing: 1,
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                Tap to Deploy <span style={{ fontSize: 12 }}>→</span>
               </div>
             </div>
           );
