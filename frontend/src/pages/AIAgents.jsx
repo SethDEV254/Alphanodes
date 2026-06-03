@@ -617,27 +617,31 @@ export default function AIAgents() {
         </div>
       )}
 
-      {/* Neural Engine stats strip */}
-      <div className="card" style={{ padding: '12px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+      {/* Neural Engine */}
+      <div style={{ borderRadius: 14, border: '1px solid rgba(252,213,53,0.12)', overflow: 'hidden', background: 'rgba(4,6,10,0.95)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid rgba(252,213,53,0.07)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00c076', boxShadow: '0 0 8px #00c076', display: 'inline-block', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-            <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>Neural Engine</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>Neural Engine</span>
+            <span style={{ fontSize: 10, color: '#555' }}>Live deep-learning signals</span>
           </div>
           <span style={{ fontSize: 10, color: '#00c076', fontWeight: 700, letterSpacing: 1 }}>ACTIVE</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <NeuralNetwork height={180} />
+          <div style={{ position: 'absolute', top: 8, right: 12, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.18)', borderRadius: 5, padding: '3px 8px', fontSize: 8, fontWeight: 700, letterSpacing: 2, color: 'rgba(252,213,53,0.7)' }}>
+            PROCESSING ···
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderTop: '1px solid rgba(252,213,53,0.07)' }}>
           {[
-            { label: 'Trades/min', value: '247' },
+            { label: 'Trades/Min', value: '247' },
             { label: 'Accuracy', value: '98.7%' },
             { label: 'Strategies', value: '12' },
             { label: 'Win Rate', value: '91.2%' },
             { label: 'Avg Return', value: '14.8%' },
           ].map(({ label, value }, i, arr) => (
-            <div key={label} style={{
-              textAlign: 'center', padding: '6px 0',
-              borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-            }}>
+            <div key={label} style={{ padding: '8px 0', textAlign: 'center', borderRight: i < arr.length - 1 ? '1px solid rgba(252,213,53,0.06)' : 'none' }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: '#fcd535' }}>{value}</div>
               <div style={{ fontSize: 8, color: '#444', marginTop: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</div>
             </div>
