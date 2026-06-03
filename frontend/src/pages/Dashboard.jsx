@@ -3,7 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
 import { getTransactions, compound, getAiInvestments } from '../api.js';
-import { useAlphaNodes } from '../hooks/useContract.js';
+import { useAlphaNodes, useUserBalance } from '../hooks/useContract.js';
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+const BSC_RPC = 'https://bsc-dataseed.binance.org/';
+
+async function waitForTx(hash) {
+  for (let i = 0; i < 40; i++) {
+    const res = await fetch(BSC_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getTransactionReceipt', params: [hash], id: 1 }),
+    });
+    const data = await res.json();
+    if (data.result?.status === '0x1') return;
+    if (data.result?.status === '0x0') throw new Error('Transaction reverted');
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  throw new Error('Transaction timeout');
+}
 
 const fmt = (n) => (n || 0).toFixed(4);
 const fmtUsd = (n, price) => ((n || 0) * price).toFixed(2);
@@ -86,6 +104,7 @@ export default function Dashboard() {
 
   const contract = useAlphaNodes();
   const { address: wagmiAddress } = useAccount();
+  const { balance: onChainBal } = useUserBalance(wagmiAddress);
   const [walletBnb, setWalletBnb] = useState(0);
 
   useEffect(() => {
@@ -148,6 +167,14 @@ export default function Dashboard() {
     const bnbAmt = usd / bnbPrice;
     setLoading('deposit');
     try {
+      // Auto-register on-chain if first time
+      if (onChainBal && !onChainBal.exists) {
+        showMsg('Setting up your account...');
+        const ref = new URLSearchParams(window.location.search).get('ref') || ZERO_ADDRESS;
+        const regHash = await contract.register(ref);
+        showMsg('Account setup confirmed! Processing deposit...');
+        await waitForTx(regHash);
+      }
       await contract.deposit(bnbAmt);
       showMsg('Deposit sent! Trading balance will update shortly.');
       setDepositAmt('');
