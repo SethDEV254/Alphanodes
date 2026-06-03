@@ -143,7 +143,7 @@ export default function Dashboard() {
 
   const handleDeposit = async () => {
     const usd = parseFloat(depositAmt);
-    if (!usd || usd < 1) return showMsg('Minimum deposit is $1', true);
+    if (!usd || usd <= 0) return showMsg('Enter a valid amount', true);
     if (!address) return showMsg('Wallet not connected', true);
     const bnbAmt = usd / bnbPrice;
     setLoading('deposit');
@@ -510,7 +510,7 @@ export default function Dashboard() {
                     onChange={e => setDepositAmt(e.target.value)}
                     style={{
                       width: '100%', background: '#0d0d0d',
-                      border: `1px solid ${depositAmt && parseFloat(depositAmt) < 1 ? 'rgba(255,77,77,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                      border: '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 10, padding: '11px 14px 11px 26px', color: '#fff', fontSize: 14,
                       outline: 'none', fontWeight: 700, boxSizing: 'border-box',
                     }}
@@ -524,9 +524,6 @@ export default function Dashboard() {
                       {(parseFloat(depositAmt) / bnbPrice).toFixed(6)} BNB
                     </span>
                     <span style={{ color: '#333', marginLeft: 8 }}>→ trading balance</span>
-                    {parseFloat(depositAmt) < 1 && (
-                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Below $1 min</span>
-                    )}
                     {walletBnb > 0 && parseFloat(depositAmt) > walletBnb * bnbPrice && (
                       <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Exceeds wallet</span>
                     )}
