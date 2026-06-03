@@ -170,12 +170,13 @@ export default function AIAgents() {
   const { address, balance, refreshBalance, bnbPrice } = useApp();
   const contract = useAlphaNodes();
   const [investments, setInvestments] = useState([]);
-  const [selected, setSelected] = useState(PACKAGES[0]);
+  const [selected, setSelected] = useState(null);
   const [selectedCoin, setSelectedCoin] = useState(COINS[0]);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState('');
   const [msg, setMsg] = useState('');
   const [tick, setTick] = useState(0);
+  const [showDeployModal, setShowDeployModal] = useState(false);
 
   useEffect(() => { if (address) fetchInvestments(); }, [address]);
 
@@ -212,6 +213,7 @@ export default function AIAgents() {
       await contract.investBalance(selected.contractId, bnbAmt);
       showMsg(`${selected.name} deployed on ${selectedCoin.symbol}!`);
       setAmount('');
+      setShowDeployModal(false);
       fetchInvestments();
       refreshBalance();
     } catch (e) {
@@ -284,7 +286,7 @@ export default function AIAgents() {
           return (
             <div
               key={pkg._id}
-              onClick={() => { setSelected(pkg); setAmount(''); }}
+              onClick={() => { setSelected(pkg); setAmount(''); setShowDeployModal(true); }}
               className="card"
               style={{
                 padding: '12px 14px', cursor: 'pointer', transition: 'all 0.18s',
@@ -317,66 +319,139 @@ export default function AIAgents() {
         })}
       </div>
 
-      {/* Deploy form with inline coin selector */}
-      {selected && (
-        <div className="card" style={{ padding: '16px', marginBottom: 12 }}>
-          <div style={{ fontSize: 11, color: '#555', marginBottom: 10, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            Configure Deployment · <span style={{ color: '#fcd535' }}>{selected.name}</span>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
-            {/* Coin picker */}
-            <div style={{ flex: '0 0 auto', minWidth: 200 }}>
-              <div style={{ fontSize: 10, color: '#555', marginBottom: 5, fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                Trading Pair
-              </div>
-              <CoinDropdown value={selectedCoin} onChange={setSelectedCoin} />
-            </div>
-
-            {/* Amount */}
-            <div style={{ flex: 1, minWidth: 140 }}>
-              <div style={{ fontSize: 10, color: '#555', marginBottom: 5, fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                Amount (USD) · Avail: <span style={{ color: '#3b9eff' }}>${tradingUsd}</span>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <span style={{
-                  position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                  fontSize: 13, fontWeight: 700, color: '#555', pointerEvents: 'none',
-                }}>$</span>
-                <input
-                  type="number"
-                  placeholder={`${selected.minUsd}–${selected.maxUsd ?? '∞'}`}
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  style={{
-                    width: '100%', background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10,
-                    padding: '10px 14px 10px 24px', color: '#fff', fontSize: 12, outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              {bnbEquiv && (
-                <div style={{ fontSize: 10, color: '#444', marginTop: 4 }}>
-                  ≈ <span style={{ color: '#fcd535' }}>{bnbEquiv} BNB</span>
+      {/* Deploy Modal */}
+      {showDeployModal && selected && (
+        <div
+          onClick={() => setShowDeployModal(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 400,
+            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 420,
+              background: '#111', borderRadius: 20,
+              border: '1px solid rgba(252,213,53,0.12)',
+              borderTop: '2px solid #fcd535',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+              animation: 'modalPop 0.25s cubic-bezier(0.34,1.56,0.64,1) both',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '16px 18px 12px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#fcd535' }}>
+                  {ICONS[selected._id]} {selected.name}
                 </div>
-              )}
+                <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
+                  {selected.dailyRate}%/day · {selected.duration}d · {(selected.dailyRate * selected.duration).toFixed(0)}% total
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDeployModal(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 8,
+                  width: 30, height: 30, color: '#888', cursor: 'pointer', fontSize: 16,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >✕</button>
             </div>
 
-            {/* Stats + deploy */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 6, minWidth: 140 }}>
+            <div style={{ padding: '14px 18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Available balance */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 12px', borderRadius: 10,
+                background: 'rgba(59,158,255,0.06)', border: '1px solid rgba(59,158,255,0.12)',
+              }}>
+                <span style={{ fontSize: 11, color: '#555' }}>Available</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#3b9eff' }}>
+                  ${tradingUsd} <span style={{ fontSize: 10, fontWeight: 400, color: '#444' }}>({fmt(tradingBal)} BNB)</span>
+                </span>
+              </div>
+
+              {/* Coin picker */}
+              <div>
+                <div style={{ fontSize: 10, color: '#555', marginBottom: 6, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                  Trading Pair
+                </div>
+                <CoinDropdown value={selectedCoin} onChange={setSelectedCoin} />
+              </div>
+
+              {/* Amount input */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>Amount (USD)</span>
+                  <span style={{ fontSize: 10, color: '#fcd535', fontWeight: 700 }}>
+                    {fmtUsd(selected.minUsd)} – {selected.maxUsd !== null ? fmtUsd(selected.maxUsd) : 'No max'}
+                  </span>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <span style={{
+                    position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                    fontSize: 14, fontWeight: 700, color: '#555', pointerEvents: 'none',
+                  }}>$</span>
+                  <input
+                    autoFocus
+                    type="number"
+                    placeholder={`${selected.minUsd}–${selected.maxUsd ?? '∞'}`}
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
+                    style={{
+                      width: '100%', background: '#0d0d0d',
+                      border: `1px solid ${amount && parseFloat(amount) > 0 ? 'rgba(252,213,53,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                      borderRadius: 12, padding: '12px 14px 12px 28px',
+                      color: '#fff', fontSize: 15, fontWeight: 700, outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                {bnbEquiv && (
+                  <div style={{ fontSize: 11, color: '#555', marginTop: 5 }}>
+                    ≈ <span style={{ color: '#fcd535', fontWeight: 700 }}>{bnbEquiv} BNB</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Earnings preview */}
               {dailyEst && (
-                <div style={{ fontSize: 10, color: '#00c076', fontWeight: 700, textAlign: 'right' }}>
-                  +${dailyEst}/day · <span style={{ color: '#aaa' }}>+${totalEst} total</span>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+                }}>
+                  <div style={{
+                    padding: '10px 12px', borderRadius: 10,
+                    background: 'rgba(0,192,118,0.06)', border: '1px solid rgba(0,192,118,0.12)',
+                  }}>
+                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Daily</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#00c076' }}>+${dailyEst}</div>
+                  </div>
+                  <div style={{
+                    padding: '10px 12px', borderRadius: 10,
+                    background: 'rgba(252,213,53,0.06)', border: '1px solid rgba(252,213,53,0.12)',
+                  }}>
+                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Total ({selected.duration}d)</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#fcd535' }}>+${totalEst}</div>
+                  </div>
                 </div>
               )}
+
+              {/* Deploy button */}
               <button
                 className="btn-primary"
                 onClick={handleDeploy}
-                disabled={loading === 'deploy'}
-                style={{ whiteSpace: 'nowrap', padding: '10px 20px', fontSize: 12, borderRadius: 10 }}
+                disabled={loading === 'deploy' || !amount || parseFloat(amount) <= 0}
+                style={{ width: '100%', padding: '14px 0', fontSize: 14, borderRadius: 12, fontWeight: 800 }}
               >
-                {loading === 'deploy' ? 'Deploying...' : `Deploy ${selected.name}`}
+                {loading === 'deploy' ? 'Deploying AI...' : `Deploy on ${selectedCoin.symbol}`}
               </button>
             </div>
           </div>
