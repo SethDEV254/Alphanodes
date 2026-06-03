@@ -403,7 +403,7 @@ export default function Dashboard() {
           style={{
             position: 'fixed', inset: 0, zIndex: 300,
             background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
             padding: '0 0 0 0',
           }}
         >
@@ -413,17 +413,12 @@ export default function Dashboard() {
             style={{
               width: '100%', maxWidth: 480,
               background: '#111',
-              borderTop: `2px solid ${activeTab === 'deposit' ? '#fcd535' : '#00c076'}`,
-              borderRadius: '18px 18px 0 0',
+              borderBottom: `2px solid ${activeTab === 'deposit' ? '#fcd535' : '#00c076'}`,
+              borderRadius: '0 0 18px 18px',
               boxShadow: '0 -12px 48px rgba(0,0,0,0.6)',
               overflow: 'hidden',
             }}
           >
-            {/* Drag handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 0' }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)' }} />
-            </div>
-
             {/* Modal header */}
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -604,6 +599,10 @@ export default function Dashboard() {
                 </button>
               </div>
             )}
+            {/* Drag handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 12px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)' }} />
+            </div>
           </div>
         </div>
       )}

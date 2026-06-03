@@ -82,12 +82,12 @@ input:focus, select:focus {
   50% { opacity: 0.5; box-shadow: 0 0 16px #00c076; }
 }
 
-@keyframes slideUp {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
 }
 .sheet-slide-up {
-  animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: slideDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 /* ── Responsive grid helpers ── */
