@@ -265,9 +265,14 @@ export default function AIAgents() {
 
   return (
     <div>
-      <div style={{ marginBottom: 14 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>AI Agents</h2>
-        <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Select a package, pick a trading pair, and deploy your AI</div>
+      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>AI Agents</h2>
+          <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Tap a package to deploy</div>
+        </div>
+        <div style={{ fontSize: 11, color: '#3b9eff', fontWeight: 700 }}>
+          {fmt(balance?.tradingBalance || 0)} BNB avail.
+        </div>
       </div>
 
       {msg && (
@@ -280,46 +285,67 @@ export default function AIAgents() {
       )}
 
       {/* Packages */}
-      <div className="grid-3" style={{ marginBottom: 12 }}>
-        {PACKAGES.map(pkg => {
-          const isSel = selected?._id === pkg._id;
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+        {PACKAGES.map((pkg, idx) => {
+          const colors = ['#fcd535', '#00c076', '#818cf8'];
+          const color = colors[idx];
           return (
             <div
               key={pkg._id}
               onClick={() => { setSelected(pkg); setAmount(''); setShowDeployModal(true); }}
               className="card"
               style={{
-                padding: '12px 14px', cursor: 'pointer', transition: 'all 0.18s',
-                border: isSel ? '1.5px solid #fcd535' : '1px solid rgba(252,213,53,0.08)',
-                background: isSel ? 'rgba(252,213,53,0.07)' : undefined,
-                boxShadow: isSel ? '0 0 20px rgba(252,213,53,0.1)' : undefined,
+                padding: '18px 20px', cursor: 'pointer', transition: 'all 0.18s',
+                borderLeft: `3px solid ${color}`,
+                borderTop: '1px solid rgba(255,255,255,0.05)',
+                background: 'rgba(14,17,22,0.8)',
                 position: 'relative', overflow: 'hidden',
               }}
+              onMouseEnter={e => { e.currentTarget.style.background = `${color}0d`; e.currentTarget.style.transform = 'translateX(3px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(14,17,22,0.8)'; e.currentTarget.style.transform = ''; }}
             >
-              {isSel && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, #fcd535, #ff8c00)' }} />}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: isSel ? '#fcd535' : '#fff' }}>
-                  {ICONS[pkg._id]} {pkg.name}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Left: icon + name + range */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+                    background: `${color}18`, border: `1px solid ${color}30`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22, color,
+                  }}>
+                    {ICONS[pkg._id]}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 3 }}>
+                      {pkg.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#555', display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ color, fontWeight: 700 }}>
+                        {fmtUsd(pkg.minUsd)} – {pkg.maxUsd !== null ? fmtUsd(pkg.maxUsd) : 'No max'}
+                      </span>
+                      <span>·</span>
+                      <span>{pkg.duration} days</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#00c076' }}>
-                  {pkg.dailyRate}%<span style={{ fontSize: 10, fontWeight: 400, color: '#555' }}>/day</span>
+
+                {/* Right: rate + total + arrow */}
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1 }}>
+                    {pkg.dailyRate}%
+                    <span style={{ fontSize: 11, fontWeight: 400, color: '#555' }}>/day</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#555' }}>
+                    <span style={{ color: '#00c076', fontWeight: 700 }}>{(pkg.dailyRate * pkg.duration).toFixed(0)}%</span> total
+                  </div>
+                  <div style={{
+                    fontSize: 10, fontWeight: 800, color,
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    background: `${color}12`, padding: '3px 8px', borderRadius: 6,
+                  }}>
+                    Deploy <span>→</span>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#555', marginBottom: 8 }}>
-                <span style={{ color: '#fcd535', fontWeight: 600 }}>
-                  {fmtUsd(pkg.minUsd)}–{pkg.maxUsd !== null ? fmtUsd(pkg.maxUsd) : 'Max'}
-                </span>
-                <span>·</span>
-                <span>{pkg.duration}d</span>
-                <span>·</span>
-                <span style={{ color: '#00c076', fontWeight: 700 }}>{(pkg.dailyRate * pkg.duration).toFixed(0)}% total</span>
-              </div>
-              <div style={{
-                fontSize: 10, fontWeight: 700, color: isSel ? '#fcd535' : '#333',
-                textTransform: 'uppercase', letterSpacing: 1,
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}>
-                Tap to Deploy <span style={{ fontSize: 12 }}>→</span>
               </div>
             </div>
           );
@@ -591,41 +617,29 @@ export default function AIAgents() {
         </div>
       )}
 
-      {/* Neural Engine */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Neural Engine</div>
-          <div style={{ fontSize: 10, color: '#555' }}>Live deep-learning signal propagation</div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', display: 'inline-block', background: '#00c076', boxShadow: '0 0 8px #00c076', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-          <span style={{ fontSize: 10, color: '#00c076', fontWeight: 700, letterSpacing: 1.5 }}>ACTIVE</span>
-        </div>
-      </div>
-
-      <div style={{ borderRadius: 14, border: '1px solid rgba(252,213,53,0.15)', overflow: 'hidden', background: 'rgba(4,6,10,0.95)', boxShadow: '0 0 40px rgba(252,213,53,0.05)' }}>
-        <div style={{ position: 'relative' }}>
-          <NeuralNetwork height={300} />
-          <div style={{ position: 'absolute', top: 14, left: 0, right: 0, display: 'flex', justifyContent: 'space-around', padding: '0 9%', pointerEvents: 'none' }}>
-            {['INPUT LAYER', 'HIDDEN LAYER 1', 'HIDDEN LAYER 2', 'OUTPUT LAYER'].map(l => (
-              <div key={l} style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.8, color: 'rgba(252,213,53,0.4)', textAlign: 'center' }}>{l}</div>
-            ))}
+      {/* Neural Engine stats strip */}
+      <div className="card" style={{ padding: '12px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00c076', boxShadow: '0 0 8px #00c076', display: 'inline-block', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>Neural Engine</span>
           </div>
-          <div style={{ position: 'absolute', top: 14, right: 20, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.18)', borderRadius: 6, padding: '4px 10px', fontSize: 9, fontWeight: 700, letterSpacing: 2, color: 'rgba(252,213,53,0.7)' }}>
-            PROCESSING ···
-          </div>
+          <span style={{ fontSize: 10, color: '#00c076', fontWeight: 700, letterSpacing: 1 }}>ACTIVE</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', borderTop: '1px solid rgba(252,213,53,0.08)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0 }}>
           {[
-            { label: 'Trades / Min', value: '247' },
+            { label: 'Trades/min', value: '247' },
             { label: 'Accuracy', value: '98.7%' },
             { label: 'Strategies', value: '12' },
             { label: 'Win Rate', value: '91.2%' },
             { label: 'Avg Return', value: '14.8%' },
           ].map(({ label, value }, i, arr) => (
-            <div key={label} style={{ padding: '10px 0', textAlign: 'center', borderRight: i < arr.length - 1 ? '1px solid rgba(252,213,53,0.06)' : 'none' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#fcd535' }}>{value}</div>
-              <div style={{ fontSize: 9, color: '#444', marginTop: 3, letterSpacing: 0.8, textTransform: 'uppercase' }}>{label}</div>
+            <div key={label} style={{
+              textAlign: 'center', padding: '6px 0',
+              borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fcd535' }}>{value}</div>
+              <div style={{ fontSize: 8, color: '#444', marginTop: 2, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</div>
             </div>
           ))}
         </div>
