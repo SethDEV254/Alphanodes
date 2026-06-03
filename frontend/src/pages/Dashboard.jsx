@@ -403,19 +403,20 @@ export default function Dashboard() {
           style={{
             position: 'fixed', inset: 0, zIndex: 300,
             background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            padding: '0 0 0 0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
           }}
         >
           <div
             className="sheet-slide-up"
             onClick={e => e.stopPropagation()}
             style={{
-              width: '100%', maxWidth: 480,
+              width: '100%', maxWidth: 460,
               background: '#111',
+              border: `1px solid rgba(255,255,255,0.07)`,
               borderTop: `2px solid ${activeTab === 'deposit' ? '#fcd535' : '#00c076'}`,
-              borderRadius: '18px 18px 0 0',
-              boxShadow: '0 -12px 48px rgba(0,0,0,0.6)',
+              borderRadius: 18,
+              boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
               overflow: 'hidden',
             }}
           >
