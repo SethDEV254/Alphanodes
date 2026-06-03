@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../App.jsx';
 import { getTrades, openTrade, closeTrade } from '../api.js';
 import TradingChart from '../components/TradingChart.jsx';
@@ -6,15 +6,167 @@ import TradingChart from '../components/TradingChart.jsx';
 const fmt = (n) => (n || 0).toFixed(4);
 
 const ASSETS = [
-  { pair: 'BNB/USDT',  symbol: 'BINANCE:BNBUSDT',  id: 'binancecoin' },
-  { pair: 'BTC/USDT',  symbol: 'BINANCE:BTCUSDT',   id: 'bitcoin' },
-  { pair: 'ETH/USDT',  symbol: 'BINANCE:ETHUSDT',   id: 'ethereum' },
-  { pair: 'SOL/USDT',  symbol: 'BINANCE:SOLUSDT',   id: 'solana' },
-  { pair: 'DOGE/USDT', symbol: 'BINANCE:DOGEUSDT',  id: 'dogecoin' },
-  { pair: 'XRP/USDT',  symbol: 'BINANCE:XRPUSDT',   id: 'ripple' },
-  { pair: 'ADA/USDT',  symbol: 'BINANCE:ADAUSDT',   id: 'cardano' },
-  { pair: 'AVAX/USDT', symbol: 'BINANCE:AVAXUSDT',  id: 'avalanche-2' },
+  { pair: 'BNB/USDT',   symbol: 'BINANCE:BNBUSDT',   id: 'binancecoin',   color: '#fcd535' },
+  { pair: 'BTC/USDT',   symbol: 'BINANCE:BTCUSDT',    id: 'bitcoin',       color: '#f7931a' },
+  { pair: 'ETH/USDT',   symbol: 'BINANCE:ETHUSDT',    id: 'ethereum',      color: '#818cf8' },
+  { pair: 'SOL/USDT',   symbol: 'BINANCE:SOLUSDT',    id: 'solana',        color: '#00ffa3' },
+  { pair: 'XRP/USDT',   symbol: 'BINANCE:XRPUSDT',    id: 'ripple',        color: '#00aff0' },
+  { pair: 'DOGE/USDT',  symbol: 'BINANCE:DOGEUSDT',   id: 'dogecoin',      color: '#c3a634' },
+  { pair: 'ADA/USDT',   symbol: 'BINANCE:ADAUSDT',    id: 'cardano',       color: '#0033ad' },
+  { pair: 'AVAX/USDT',  symbol: 'BINANCE:AVAXUSDT',   id: 'avalanche-2',   color: '#e84142' },
+  { pair: 'DOT/USDT',   symbol: 'BINANCE:DOTUSDT',    id: 'polkadot',      color: '#e6007a' },
+  { pair: 'MATIC/USDT', symbol: 'BINANCE:MATICUSDT',  id: 'matic-network', color: '#8247e5' },
+  { pair: 'LINK/USDT',  symbol: 'BINANCE:LINKUSDT',   id: 'chainlink',     color: '#2a5ada' },
+  { pair: 'UNI/USDT',   symbol: 'BINANCE:UNIUSDT',    id: 'uniswap',       color: '#ff007a' },
+  { pair: 'LTC/USDT',   symbol: 'BINANCE:LTCUSDT',    id: 'litecoin',      color: '#a0a0a0' },
+  { pair: 'ATOM/USDT',  symbol: 'BINANCE:ATOMUSDT',   id: 'cosmos',        color: '#6f7390' },
+  { pair: 'NEAR/USDT',  symbol: 'BINANCE:NEARUSDT',   id: 'near',          color: '#00c08b' },
+  { pair: 'OP/USDT',    symbol: 'BINANCE:OPUSDT',     id: 'optimism',      color: '#ff0420' },
+  { pair: 'ARB/USDT',   symbol: 'BINANCE:ARBUSDT',    id: 'arbitrum',      color: '#28a0f0' },
+  { pair: 'SUI/USDT',   symbol: 'BINANCE:SUIUSDT',    id: 'sui',           color: '#4da2ff' },
+  { pair: 'TRX/USDT',   symbol: 'BINANCE:TRXUSDT',    id: 'tron',          color: '#ff0013' },
+  { pair: 'FTM/USDT',   symbol: 'BINANCE:FTMUSDT',    id: 'fantom',        color: '#1969ff' },
+  { pair: 'INJ/USDT',   symbol: 'BINANCE:INJUSDT',    id: 'injective-protocol', color: '#00b4d8' },
+  { pair: 'APT/USDT',   symbol: 'BINANCE:APTUSDT',    id: 'aptos',         color: '#00c9a7' },
+  { pair: 'WLD/USDT',   symbol: 'BINANCE:WLDUSDT',    id: 'worldcoin-wld', color: '#a8edea' },
+  { pair: 'PEPE/USDT',  symbol: 'BINANCE:PEPEUSDT',   id: 'pepe',          color: '#4caf50' },
+  { pair: 'SHIB/USDT',  symbol: 'BINANCE:SHIBUSDT',   id: 'shiba-inu',     color: '#ff9800' },
 ];
+
+function PairDropdown({ value, onChange, prices }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handle = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const filtered = search
+    ? ASSETS.filter(a =>
+        a.pair.toLowerCase().includes(search.toLowerCase())
+      )
+    : ASSETS;
+
+  const p = prices[value.id];
+  const change = p?.usd_24h_change;
+
+  return (
+    <div ref={ref} style={{ position: 'relative', marginBottom: 14 }}>
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+          background: open ? 'rgba(0,192,118,0.06)' : 'rgba(255,255,255,0.03)',
+          border: `1px solid ${open ? 'rgba(0,192,118,0.4)' : 'rgba(255,255,255,0.08)'}`,
+          borderTop: `2px solid ${value.color}`,
+          borderRadius: 12, padding: '12px 16px', cursor: 'pointer',
+          transition: 'all 0.15s', outline: 'none',
+        }}
+      >
+        <span style={{
+          width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+          background: value.color, boxShadow: `0 0 8px ${value.color}80`,
+        }} />
+        <span style={{ fontSize: 16, fontWeight: 800, color: '#fff', flex: 1, textAlign: 'left' }}>
+          {value.pair}
+        </span>
+        {p?.usd && (
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
+            ${p.usd.toLocaleString(undefined, { maximumFractionDigits: p.usd < 1 ? 6 : 2 })}
+          </span>
+        )}
+        {change !== undefined && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, minWidth: 52, textAlign: 'right',
+            color: change >= 0 ? '#00c076' : '#ff4d4d',
+          }}>
+            {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+          </span>
+        )}
+        <svg
+          width="12" height="12" viewBox="0 0 12 12" fill="none"
+          style={{ flexShrink: 0, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}
+        >
+          <path d="M2 4.5L6 8.5L10 4.5" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 200,
+          background: '#0f0f14', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 14, overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
+        }}>
+          {/* Search */}
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search pair…"
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
+                padding: '7px 12px', color: '#fff', fontSize: 12, outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+          {/* List */}
+          <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: 14, fontSize: 12, color: '#555', textAlign: 'center' }}>No results</div>
+            ) : filtered.map(a => {
+              const ap = prices[a.id];
+              const ac = ap?.usd_24h_change;
+              const isSel = value.pair === a.pair;
+              return (
+                <div
+                  key={a.pair}
+                  onClick={() => { onChange(a); setOpen(false); setSearch(''); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', cursor: 'pointer',
+                    background: isSel ? `${a.color}10` : 'transparent',
+                    borderLeft: `2px solid ${isSel ? a.color : 'transparent'}`,
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                  onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: isSel ? a.color : '#ccc', minWidth: 90 }}>
+                    {a.pair}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 12, color: '#fff', fontWeight: 600 }}>
+                    {ap?.usd ? `$${ap.usd.toLocaleString(undefined, { maximumFractionDigits: ap.usd < 1 ? 6 : 2 })}` : '—'}
+                  </span>
+                  {ac !== undefined && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: ac >= 0 ? '#00c076' : '#ff4d4d' }}>
+                      {ac >= 0 ? '+' : ''}{ac.toFixed(2)}%
+                    </span>
+                  )}
+                  {isSel && <span style={{ fontSize: 10, color: a.color, fontWeight: 700 }}>✓</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function IconBox({ color, size = 38, children }) {
   return (
@@ -105,7 +257,6 @@ export default function Trading() {
 
   const open = trades.filter(t => t.status === 'open');
   const closed = trades.filter(t => t.status !== 'open');
-  const selPrice = prices[selectedAsset.id];
   const positionSize = ((parseFloat(amount) || 0) * parseInt(leverage || 1)).toFixed(4);
   const dirColor = direction === 'long' ? '#00c076' : '#ff4d4d';
 
@@ -120,14 +271,14 @@ export default function Trading() {
           borderRadius: 20, padding: '4px 12px', marginBottom: 10,
         }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00c076' }} />
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#00c076', letterSpacing: 1.5 }}>
-            TRADING
-          </span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#00c076', letterSpacing: 1.5 }}>TRADING</span>
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
           Leveraged <span style={{ color: '#00c076' }}>Markets</span>
         </div>
-        <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>Live charts · Up to 100x leverage</div>
+        <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>
+          {ASSETS.length} pairs · Up to 100x leverage
+        </div>
       </div>
 
       {msg && (
@@ -139,47 +290,14 @@ export default function Trading() {
         }}>{msg.text}</div>
       )}
 
-      {/* Asset picker */}
-      <div style={{
-        display: 'flex', gap: 8, marginBottom: 14,
-        overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
-      }}>
-        {ASSETS.map(a => {
-          const p = prices[a.id];
-          const change = p?.usd_24h_change;
-          const isUp = (change || 0) >= 0;
-          const isSel = selectedAsset.pair === a.pair;
-          return (
-            <div
-              key={a.pair}
-              onClick={() => setSelectedAsset(a)}
-              style={{
-                flex: '0 0 auto', padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
-                background: isSel ? 'rgba(0,192,118,0.08)' : 'rgba(255,255,255,0.02)',
-                border: isSel ? '1px solid rgba(0,192,118,0.3)' : '1px solid rgba(255,255,255,0.06)',
-                borderTop: isSel ? '2px solid #00c076' : '2px solid transparent',
-                minWidth: 96, transition: 'all 0.15s',
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 700, color: isSel ? '#00c076' : '#999' }}>{a.pair}</div>
-              <div style={{ fontSize: 12, fontWeight: 800, marginTop: 2, color: '#fff' }}>
-                {p?.usd ? `$${p.usd.toLocaleString(undefined, { maximumFractionDigits: p.usd < 1 ? 5 : 2 })}` : '—'}
-              </div>
-              {change !== undefined && (
-                <div style={{ fontSize: 10, color: isUp ? '#00c076' : '#ff4d4d', fontWeight: 600, marginTop: 1 }}>
-                  {isUp ? '+' : ''}{change.toFixed(2)}%
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Pair dropdown */}
+      <PairDropdown value={selectedAsset} onChange={setSelectedAsset} prices={prices} />
 
       {/* Chart */}
       <div style={{
         borderRadius: 14, overflow: 'hidden', marginBottom: 14,
         border: '1px solid rgba(255,255,255,0.06)',
-        borderTop: '2px solid #00c076',
+        borderTop: `2px solid ${selectedAsset.color}`,
         background: '#111',
       }}>
         <div style={{
@@ -188,17 +306,20 @@ export default function Trading() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 14, fontWeight: 800 }}>{selectedAsset.pair}</span>
-            {selPrice?.usd && (
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#00c076' }}>
-                ${selPrice.usd.toLocaleString(undefined, { maximumFractionDigits: selPrice.usd < 1 ? 5 : 2 })}
+            {prices[selectedAsset.id]?.usd && (
+              <span style={{ fontSize: 14, fontWeight: 800, color: selectedAsset.color }}>
+                ${prices[selectedAsset.id].usd.toLocaleString(undefined, {
+                  maximumFractionDigits: prices[selectedAsset.id].usd < 1 ? 6 : 2,
+                })}
               </span>
             )}
-            {selPrice?.usd_24h_change !== undefined && (
+            {prices[selectedAsset.id]?.usd_24h_change !== undefined && (
               <span style={{
                 fontSize: 11, fontWeight: 700,
-                color: selPrice.usd_24h_change >= 0 ? '#00c076' : '#ff4d4d',
+                color: prices[selectedAsset.id].usd_24h_change >= 0 ? '#00c076' : '#ff4d4d',
               }}>
-                {selPrice.usd_24h_change >= 0 ? '+' : ''}{selPrice.usd_24h_change.toFixed(2)}%
+                {prices[selectedAsset.id].usd_24h_change >= 0 ? '+' : ''}
+                {prices[selectedAsset.id].usd_24h_change.toFixed(2)}%
               </span>
             )}
           </div>
