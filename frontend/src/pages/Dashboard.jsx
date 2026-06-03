@@ -664,10 +664,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Strategy Cards */}
+      {/* Our Products */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1 }}>
-          Trading Strategies
+          Our Products
         </div>
         <div className="grid-2" style={{ marginBottom: 0 }}>
           {[

@@ -50,13 +50,12 @@ function PairDropdown({ value, onChange, prices }) {
   }, []);
 
   const filtered = search
-    ? ASSETS.filter(a =>
-        a.pair.toLowerCase().includes(search.toLowerCase())
-      )
+    ? ASSETS.filter(a => a.pair.toLowerCase().includes(search.toLowerCase()))
     : ASSETS;
 
   const p = prices[value.id];
   const change = p?.usd_24h_change;
+  const isUp = (change || 0) >= 0;
 
   return (
     <div ref={ref} style={{ position: 'relative', marginBottom: 14 }}>
@@ -65,69 +64,86 @@ function PairDropdown({ value, onChange, prices }) {
         onClick={() => setOpen(v => !v)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-          background: open ? 'rgba(0,192,118,0.06)' : 'rgba(255,255,255,0.03)',
-          border: `1px solid ${open ? 'rgba(0,192,118,0.4)' : 'rgba(255,255,255,0.08)'}`,
-          borderTop: `2px solid ${value.color}`,
-          borderRadius: 12, padding: '12px 16px', cursor: 'pointer',
-          transition: 'all 0.15s', outline: 'none',
+          background: 'rgba(12,14,20,0.9)',
+          border: `1px solid ${open ? value.color + '50' : 'rgba(255,255,255,0.07)'}`,
+          borderRadius: 14, padding: '14px 16px', cursor: 'pointer',
+          transition: 'all 0.18s', outline: 'none',
+          boxShadow: open ? `0 0 0 3px ${value.color}12` : 'none',
         }}
       >
-        <span style={{
-          width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-          background: value.color, boxShadow: `0 0 8px ${value.color}80`,
-        }} />
-        <span style={{ fontSize: 16, fontWeight: 800, color: '#fff', flex: 1, textAlign: 'left' }}>
-          {value.pair}
-        </span>
-        {p?.usd && (
-          <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
-            ${p.usd.toLocaleString(undefined, { maximumFractionDigits: p.usd < 1 ? 6 : 2 })}
-          </span>
-        )}
-        {change !== undefined && (
+        {/* Color dot + pair */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
           <span style={{
-            fontSize: 11, fontWeight: 700, minWidth: 52, textAlign: 'right',
-            color: change >= 0 ? '#00c076' : '#ff4d4d',
+            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+            background: `${value.color}18`, border: `1px solid ${value.color}30`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: value.color, boxShadow: `0 0 10px ${value.color}` }} />
           </span>
-        )}
-        <svg
-          width="12" height="12" viewBox="0 0 12 12" fill="none"
-          style={{ flexShrink: 0, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{value.pair}</div>
+            <div style={{ fontSize: 10, color: '#444', marginTop: 2, letterSpacing: 0.5 }}>PERPETUAL</div>
+          </div>
+        </div>
+
+        {/* Price + change */}
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>
+            {p?.usd ? `$${p.usd.toLocaleString(undefined, { maximumFractionDigits: p.usd < 1 ? 6 : 2 })}` : '—'}
+          </div>
+          {change !== undefined && (
+            <div style={{
+              fontSize: 11, fontWeight: 700, marginTop: 2,
+              color: isUp ? '#00c076' : '#ff4d4d',
+            }}>
+              {isUp ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
+            </div>
+          )}
+        </div>
+
+        {/* Chevron */}
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+          style={{ flexShrink: 0, marginLeft: 4, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}
         >
-          <path d="M2 4.5L6 8.5L10 4.5" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M3 5L7 9L11 5" stroke={open ? value.color : '#555'} strokeWidth="1.8" strokeLinecap="round"/>
         </svg>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown panel */}
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 200,
-          background: '#0f0f14', border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 14, overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
+          position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 200,
+          background: '#0c0e14', border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 16, overflow: 'hidden',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+          animation: 'fadeSlideDown 0.18s ease both',
         }}>
-          {/* Search */}
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* Search bar */}
+          <div style={{
+            padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
             <input
               autoFocus
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search pair…"
               style={{
-                width: '100%', background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
-                padding: '7px 12px', color: '#fff', fontSize: 12, outline: 'none',
-                boxSizing: 'border-box',
+                flex: 1, background: 'transparent', border: 'none',
+                color: '#fff', fontSize: 13, outline: 'none',
               }}
             />
+            <span style={{ fontSize: 10, color: '#333' }}>{filtered.length} pairs</span>
           </div>
+
           {/* List */}
-          <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 300, overflowY: 'auto' }}>
             {filtered.length === 0 ? (
-              <div style={{ padding: 14, fontSize: 12, color: '#555', textAlign: 'center' }}>No results</div>
-            ) : filtered.map(a => {
+              <div style={{ padding: '20px', fontSize: 12, color: '#555', textAlign: 'center' }}>No results</div>
+            ) : filtered.map((a, i) => {
               const ap = prices[a.id];
               const ac = ap?.usd_24h_change;
               const isSel = value.pair === a.pair;
@@ -136,28 +152,33 @@ function PairDropdown({ value, onChange, prices }) {
                   key={a.pair}
                   onClick={() => { onChange(a); setOpen(false); setSearch(''); }}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
+                    display: 'flex', alignItems: 'center', gap: 12,
                     padding: '10px 14px', cursor: 'pointer',
-                    background: isSel ? `${a.color}10` : 'transparent',
-                    borderLeft: `2px solid ${isSel ? a.color : 'transparent'}`,
+                    background: isSel ? `${a.color}0d` : 'transparent',
+                    borderBottom: i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
                     transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                  onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                   onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: isSel ? a.color : '#ccc', minWidth: 90 }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: a.color, boxShadow: isSel ? `0 0 8px ${a.color}` : 'none',
+                  }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: isSel ? a.color : '#ccc', minWidth: 96 }}>
                     {a.pair}
                   </span>
-                  <span style={{ flex: 1, fontSize: 12, color: '#fff', fontWeight: 600 }}>
+                  <span style={{ flex: 1, fontSize: 12, color: '#888', fontWeight: 600 }}>
                     {ap?.usd ? `$${ap.usd.toLocaleString(undefined, { maximumFractionDigits: ap.usd < 1 ? 6 : 2 })}` : '—'}
                   </span>
                   {ac !== undefined && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: ac >= 0 ? '#00c076' : '#ff4d4d' }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, minWidth: 52, textAlign: 'right',
+                      color: ac >= 0 ? '#00c076' : '#ff4d4d',
+                    }}>
                       {ac >= 0 ? '+' : ''}{ac.toFixed(2)}%
                     </span>
                   )}
-                  {isSel && <span style={{ fontSize: 10, color: a.color, fontWeight: 700 }}>✓</span>}
                 </div>
               );
             })}

@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useDisconnect } from 'wagmi';
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../App.jsx';
@@ -77,6 +77,7 @@ export default function Layout() {
   const { address, balance } = useApp();
   const { disconnect } = useDisconnect();
   const navigate = useNavigate();
+  const location = useLocation();
   const vantaRef = useRef(null);
   const vantaEffect = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -238,7 +239,9 @@ export default function Layout() {
         maxWidth: isMobile ? '100vw' : 'calc(100vw - 220px)',
         position: 'relative', zIndex: 1,
       }}>
-        <Outlet />
+        <div key={location.pathname} className="page-enter">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
