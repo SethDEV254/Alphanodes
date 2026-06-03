@@ -4,6 +4,7 @@ import { useApp } from '../App.jsx';
 import { getAiInvestments, compoundAiInvestment } from '../api.js';
 import { useAlphaNodes, useUserBalance } from '../hooks/useContract.js';
 import NeuralNetwork from '../components/NeuralNetwork.jsx';
+import { TxSuccess } from '../components/TxSuccess.jsx';
 
 const fmtUsd = (n) => n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 
@@ -180,6 +181,7 @@ export default function AIAgents() {
   const [msg, setMsg] = useState('');
   const [tick, setTick] = useState(0);
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [successTx, setSuccessTx] = useState(null);
 
   useEffect(() => { if (address) fetchInvestments(); }, [address]);
 
@@ -213,10 +215,16 @@ export default function AIAgents() {
       return showMsg('Insufficient trading balance', true);
     setLoading('deploy');
     try {
-      await contract.investBalance(selected.contractId, bnbAmt);
-      showMsg(`${selected.name} deployed on ${selectedCoin.symbol}!`);
+      const hash = await contract.investBalance(selected.contractId, bnbAmt);
       setAmount('');
       setShowDeployModal(false);
+      setMsg('');
+      setSuccessTx({
+        title: 'AI Deployed!',
+        subtitle: `${selected.name} running on ${selectedCoin.symbol}`,
+        amount: `-$${usdAmt.toFixed(2)} from trading balance`,
+        hash,
+      });
       fetchInvestments();
       refreshBalance();
     } catch (e) {
@@ -268,6 +276,7 @@ export default function AIAgents() {
 
   return (
     <div>
+      <TxSuccess data={successTx} onClose={() => setSuccessTx(null)} />
       <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>AI Agents</h2>
