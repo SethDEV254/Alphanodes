@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
-import { getAiInvestments, compoundAiInvestment } from '../api.js';
+import { getAiInvestments, createAiInvestment, compoundAiInvestment } from '../api.js';
 import { useAlphaNodes, useUserBalance } from '../hooks/useContract.js';
 import NeuralNetwork from '../components/NeuralNetwork.jsx';
 import { TxSuccess } from '../components/TxSuccess.jsx';
@@ -215,7 +215,13 @@ export default function AIAgents() {
       return showMsg('Insufficient trading balance', true);
     setLoading('deploy');
     try {
-      const hash = await contract.investBalance(selected.contractId, bnbAmt);
+      const r = await createAiInvestment({
+        address,
+        packageId: selected._id,
+        amount: bnbAmt,
+        coin: selectedCoin.symbol,
+      });
+      if (!r.data.success) return showMsg(r.data.error || 'Deploy failed', true);
       setAmount('');
       setShowDeployModal(false);
       setMsg('');
@@ -223,7 +229,6 @@ export default function AIAgents() {
         title: 'AI Deployed!',
         subtitle: `${selected.name} running on ${selectedCoin.symbol}`,
         amount: `-$${usdAmt.toFixed(2)} from trading balance`,
-        hash,
       });
       fetchInvestments();
       refreshBalance();
