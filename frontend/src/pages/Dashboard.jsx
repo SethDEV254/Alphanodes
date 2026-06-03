@@ -451,21 +451,30 @@ export default function Dashboard() {
           }}
         >
           <div
+            className="sheet-slide-up"
             onClick={e => e.stopPropagation()}
             style={{
               width: '100%', maxWidth: 480,
-              background: '#111', borderTop: '2px solid #3b9eff',
+              background: '#111',
+              borderTop: `2px solid ${activeTab === 'deposit' ? '#fcd535' : '#00c076'}`,
               borderRadius: '18px 18px 0 0',
               boxShadow: '0 -12px 48px rgba(0,0,0,0.6)',
               overflow: 'hidden',
             }}
           >
+            {/* Drag handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 0' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)' }} />
+            </div>
+
             {/* Modal header */}
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '16px 20px 0',
+              padding: '10px 20px 0',
             }}>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>Manage Funds</div>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>
+                {activeTab === 'deposit' ? '↓ Add Funds' : '↑ Take Profit'}
+              </div>
               <button
                 onClick={() => setShowFundsModal(false)}
                 style={{
@@ -477,32 +486,48 @@ export default function Dashboard() {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', margin: '14px 20px 0' }}>
-              {['deposit', 'withdraw'].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    flex: 1, padding: '10px 0', background: 'none', border: 'none',
-                    fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                    color: activeTab === tab ? '#3b9eff' : '#444',
-                    borderBottom: activeTab === tab ? '2px solid #3b9eff' : '2px solid transparent',
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {tab === 'deposit' ? '↓ Add Funds' : '↑ Take Profit'}
-                </button>
-              ))}
+            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', margin: '12px 20px 0' }}>
+              {['deposit', 'withdraw'].map(tab => {
+                const isActive = activeTab === tab;
+                const color = tab === 'deposit' ? '#fcd535' : '#00c076';
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      flex: 1, padding: '10px 0', background: 'none', border: 'none',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                      color: isActive ? color : '#444',
+                      borderBottom: isActive ? `2px solid ${color}` : '2px solid transparent',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {tab === 'deposit' ? '↓ Add Funds' : '↑ Take Profit'}
+                  </button>
+                );
+              })}
             </div>
 
             {activeTab === 'deposit' && (
-              <div style={{ padding: '16px 20px 28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ padding: '16px 20px 32px' }}>
+                {/* Balance row + MAX */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontSize: 11, color: '#555' }}>
-                    Wallet: <span style={{ color: '#3b9eff', fontWeight: 700 }}>${(walletBnb * bnbPrice).toFixed(2)}</span>
+                    Wallet:{' '}
+                    <span style={{ color: '#fcd535', fontWeight: 700 }}>{walletBnb.toFixed(4)} BNB</span>
+                    <span style={{ color: '#444', marginLeft: 6 }}>(${(walletBnb * bnbPrice).toFixed(2)})</span>
                   </span>
-                  <span style={{ fontSize: 11, color: '#555' }}>Min: <span style={{ color: '#fcd535', fontWeight: 700 }}>$50</span></span>
+                  <button
+                    onClick={() => setDepositAmt(((walletBnb * bnbPrice) * 0.99).toFixed(2))}
+                    style={{
+                      fontSize: 10, fontWeight: 800, color: '#fcd535',
+                      background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.2)',
+                      borderRadius: 5, padding: '3px 8px', cursor: 'pointer', letterSpacing: 0.5,
+                    }}
+                  >MAX</button>
                 </div>
+
+                {/* Quick amounts */}
                 <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
                   {[50, 100, 200, 500].map(v => (
                     <button
@@ -510,9 +535,9 @@ export default function Dashboard() {
                       onClick={() => setDepositAmt(String(v))}
                       style={{
                         flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                        background: depositAmt === String(v) ? 'rgba(59,158,255,0.12)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${depositAmt === String(v) ? 'rgba(59,158,255,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                        color: depositAmt === String(v) ? '#3b9eff' : '#555',
+                        background: depositAmt === String(v) ? 'rgba(252,213,53,0.12)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${depositAmt === String(v) ? 'rgba(252,213,53,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                        color: depositAmt === String(v) ? '#fcd535' : '#555',
                         cursor: 'pointer',
                       }}
                     >
@@ -520,6 +545,8 @@ export default function Dashboard() {
                     </button>
                   ))}
                 </div>
+
+                {/* Input */}
                 <div style={{ position: 'relative', marginBottom: 8 }}>
                   <span style={{
                     position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
@@ -530,34 +557,37 @@ export default function Dashboard() {
                     onChange={e => setDepositAmt(e.target.value)}
                     style={{
                       width: '100%', background: '#0d0d0d',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      border: `1px solid ${depositAmt && parseFloat(depositAmt) < 50 ? 'rgba(255,77,77,0.4)' : 'rgba(255,255,255,0.08)'}`,
                       borderRadius: 10, padding: '11px 14px 11px 26px', color: '#fff', fontSize: 14,
                       outline: 'none', fontWeight: 700, boxSizing: 'border-box',
                     }}
                   />
                 </div>
+
+                {/* Preview */}
                 {depositAmt && parseFloat(depositAmt) > 0 && (
                   <div style={{ fontSize: 11, color: '#555', marginBottom: 12 }}>
                     ≈ <span style={{ color: '#fcd535', fontWeight: 700 }}>
                       {(parseFloat(depositAmt) / bnbPrice).toFixed(6)} BNB
                     </span>
+                    <span style={{ color: '#333', marginLeft: 8 }}>→ trading balance</span>
                     {parseFloat(depositAmt) < 50 && (
-                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Below $50 minimum</span>
+                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Below $50 min</span>
                     )}
                     {walletBnb > 0 && parseFloat(depositAmt) > walletBnb * bnbPrice && (
-                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Exceeds wallet balance</span>
+                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Exceeds wallet</span>
                     )}
                   </div>
                 )}
+
                 <button
-                  className="btn-primary" onClick={handleDeposit} disabled={loading === 'deposit'}
-                  style={{ width: '100%', borderRadius: 10, padding: '12px 0' }}
+                  className="btn-primary"
+                  onClick={handleDeposit}
+                  disabled={loading === 'deposit' || !depositAmt || parseFloat(depositAmt) <= 0}
+                  style={{ width: '100%', borderRadius: 10, padding: '13px 0', fontSize: 13 }}
                 >
-                  {loading === 'deposit' ? 'Awaiting wallet confirmation...' : `Add Funds ${depositAmt ? `$${depositAmt}` : ''}`}
+                  {loading === 'deposit' ? 'Awaiting confirmation...' : `Add Funds${depositAmt ? ` $${depositAmt}` : ''}`}
                 </button>
-                <div style={{ fontSize: 10, color: '#2a2a2a', marginTop: 8 }}>
-                  Wallet → Trading Balance · {PLATFORM_WALLET.slice(0, 14)}...
-                </div>
               </div>
             )}
 
