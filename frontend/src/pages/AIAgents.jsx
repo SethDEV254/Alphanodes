@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../App.jsx';
 import { getAiInvestments, compoundAiInvestment } from '../api.js';
+
+const fmtUsd = (n) => n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 import { useAlphaNodes } from '../hooks/useContract.js';
 import NeuralNetwork from '../components/NeuralNetwork.jsx';
 
@@ -8,9 +10,9 @@ const fmt = (n) => (n || 0).toFixed(4);
 const ICONS = { 'alpha-x': '◈', core: '◎', max: '⬡' };
 
 const PACKAGES = [
-  { _id: 'alpha-x', contractId: 0, name: 'Alpha X', dailyRate: 1.0, minAmount: 0,    maxAmount: 100,   duration: 30 },
-  { _id: 'core',    contractId: 1, name: 'Core',    dailyRate: 1.5, minAmount: 100,  maxAmount: 1000,  duration: 60 },
-  { _id: 'max',     contractId: 2, name: 'Max',     dailyRate: 2.0, minAmount: 1000, maxAmount: 10000, duration: 90 },
+  { _id: 'alpha-x', contractId: 0, name: 'Alpha X', dailyRate: 1.0, minUsd: 0,    maxUsd: 99,   duration: 30 },
+  { _id: 'core',    contractId: 1, name: 'Core',    dailyRate: 1.5, minUsd: 100,  maxUsd: 999,  duration: 60 },
+  { _id: 'max',     contractId: 2, name: 'Max',     dailyRate: 2.0, minUsd: 1000, maxUsd: null, duration: 90 },
 ];
 
 const COINS = [
@@ -165,7 +167,7 @@ function CoinDropdown({ value, onChange }) {
 }
 
 export default function AIAgents() {
-  const { address, balance, refreshBalance } = useApp();
+  const { address, balance, refreshBalance, bnbPrice } = useApp();
   const contract = useAlphaNodes();
   const [investments, setInvestments] = useState([]);
   const [selected, setSelected] = useState(PACKAGES[0]);
@@ -196,16 +198,18 @@ export default function AIAgents() {
 
   const handleDeploy = async () => {
     if (!selected) return showMsg('Select a package', true);
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return showMsg('Enter a valid amount', true);
-    if (amt > (balance?.tradingBalance || 0)) return showMsg('Insufficient trading balance', true);
-    if (selected.maxAmount && amt > selected.maxAmount)
-      return showMsg(`Max for ${selected.name} is ${selected.maxAmount} BNB`, true);
-    if (amt < selected.minAmount)
-      return showMsg(`Min for ${selected.name} is ${selected.minAmount} BNB`, true);
+    const usd = parseFloat(amount);
+    if (!usd || usd <= 0) return showMsg('Enter a valid amount', true);
+    if (usd < selected.minUsd)
+      return showMsg(`Min for ${selected.name} is $${selected.minUsd}`, true);
+    if (selected.maxUsd !== null && usd > selected.maxUsd)
+      return showMsg(`Max for ${selected.name} is $${selected.maxUsd}`, true);
+    const bnbAmt = usd / bnbPrice;
+    if (bnbAmt > (balance?.tradingBalance || 0))
+      return showMsg('Insufficient trading balance', true);
     setLoading('deploy');
     try {
-      await contract.investBalance(selected.contractId, amt);
+      await contract.investBalance(selected.contractId, bnbAmt);
       showMsg(`${selected.name} deployed on ${selectedCoin.symbol}!`);
       setAmount('');
       fetchInvestments();
@@ -251,8 +255,11 @@ export default function AIAgents() {
   const active = investments.filter(i => i.status === 'active');
   const completed = investments.filter(i => i.status !== 'active');
   const tradingBal = balance?.tradingBalance || 0;
-  const dailyEst = selected && amount ? ((parseFloat(amount) || 0) * selected.dailyRate / 100).toFixed(4) : null;
-  const totalEst = selected && amount ? ((parseFloat(amount) || 0) * selected.dailyRate / 100 * selected.duration).toFixed(4) : null;
+  const tradingUsd = (tradingBal * bnbPrice).toFixed(2);
+  const usdAmt = parseFloat(amount) || 0;
+  const bnbEquiv = usdAmt > 0 ? (usdAmt / bnbPrice).toFixed(6) : null;
+  const dailyEst = selected && usdAmt ? (usdAmt * selected.dailyRate / 100).toFixed(2) : null;
+  const totalEst = selected && usdAmt ? (usdAmt * selected.dailyRate / 100 * selected.duration).toFixed(2) : null;
 
   return (
     <div>
@@ -297,7 +304,9 @@ export default function AIAgents() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#555' }}>
-                <span>{pkg.minAmount}–{pkg.maxAmount} BNB</span>
+                <span style={{ color: '#fcd535', fontWeight: 600 }}>
+                  {fmtUsd(pkg.minUsd)}–{pkg.maxUsd !== null ? fmtUsd(pkg.maxUsd) : 'Max'}
+                </span>
                 <span>·</span>
                 <span>{pkg.duration}d</span>
                 <span>·</span>
@@ -327,27 +336,38 @@ export default function AIAgents() {
             {/* Amount */}
             <div style={{ flex: 1, minWidth: 140 }}>
               <div style={{ fontSize: 10, color: '#555', marginBottom: 5, fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                Amount · Avail: <span style={{ color: '#3b9eff' }}>{fmt(tradingBal)} BNB</span>
+                Amount (USD) · Avail: <span style={{ color: '#3b9eff' }}>${tradingUsd}</span>
               </div>
-              <input
-                type="number"
-                placeholder={`${selected.minAmount}–${selected.maxAmount} BNB`}
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                style={{
-                  width: '100%', background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10,
-                  padding: '10px 14px', color: '#fff', fontSize: 12, outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <span style={{
+                  position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 13, fontWeight: 700, color: '#555', pointerEvents: 'none',
+                }}>$</span>
+                <input
+                  type="number"
+                  placeholder={`${selected.minUsd}–${selected.maxUsd ?? '∞'}`}
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10,
+                    padding: '10px 14px 10px 24px', color: '#fff', fontSize: 12, outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              {bnbEquiv && (
+                <div style={{ fontSize: 10, color: '#444', marginTop: 4 }}>
+                  ≈ <span style={{ color: '#fcd535' }}>{bnbEquiv} BNB</span>
+                </div>
+              )}
             </div>
 
             {/* Stats + deploy */}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 6, minWidth: 140 }}>
               {dailyEst && (
                 <div style={{ fontSize: 10, color: '#00c076', fontWeight: 700, textAlign: 'right' }}>
-                  +{dailyEst}/day · <span style={{ color: '#aaa' }}>+{totalEst} total</span>
+                  +${dailyEst}/day · <span style={{ color: '#aaa' }}>+${totalEst} total</span>
                 </div>
               )}
               <button
