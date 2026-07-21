@@ -154,7 +154,7 @@ contract AlphaNodes {
             totalWithdrawn:   0,
             tradingBalance:   0,
             aiEarnings:       0,
-            referralEarnings: 0,
+            referralEarnings: 0
         });
         userList.push(msg.sender);
         emit Registered(msg.sender, referrer);
@@ -222,7 +222,7 @@ contract AlphaNodes {
             startTime:       block.timestamp,
             endTime:         block.timestamp + pkg.durationDays * 1 days,
             claimedEarnings: 0,
-            active:          true,
+            active:          true
         });
         userAIInvestments[msg.sender].push(id);
 
@@ -294,7 +294,7 @@ contract AlphaNodes {
             endTime:         block.timestamp + duration * 1 days,
             claimedEarnings: 0,
             active:          true,
-            earlyUnlocked:   false,
+            earlyUnlocked:   false
         });
         userStakes[msg.sender].push(id);
 
@@ -379,7 +379,7 @@ contract AlphaNodes {
             timestamp: block.timestamp,
             approved:  false,
             rejected:  false,
-            claimed:   false,
+            claimed:   false
         });
         userWithdrawals[msg.sender].push(id);
 
@@ -439,17 +439,6 @@ contract AlphaNodes {
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "Zero address");
         owner = newOwner;
-    }
-
-    /**
-     * @notice Credit a user's trading balance (admin only) — mirrors on-chain deposit
-     */
-    function adminCredit(address user, uint256 amount) external onlyOwner {
-        require(users[user].exists, "User not registered");
-        require(amount > 0, "Zero amount");
-        users[user].tradingBalance += amount;
-        users[user].totalDeposited += amount;
-        emit Deposited(user, amount);
     }
 
     /**

@@ -46,6 +46,7 @@ export const deposit = (data) => api.post('/api/deposit', data);
 export const requestWithdrawal = (data) => api.post('/api/withdraw', data);
 export const claimWithdrawal = (data) => api.post('/api/withdraw/claim', data);
 export const compound = (data) => api.post('/api/withdraw/compound', data);
+export const getWithdrawalStatus = (address) => api.get(`/api/withdraw/status?address=${address}`);
 export const getWithdrawals = (address) =>
   api.get(`/api/transactions?address=${address}&type=withdrawal`);
 
@@ -62,3 +63,36 @@ export const adminWithdrawals = (password, status = 'pending') =>
   api.get(`/api/admin/withdrawals?password=${password}&status=${status}`);
 export const adminUpdateWithdrawal = (id, data, password) =>
   api.patch(`/api/admin/withdrawals/${id}`, { ...data, password });
+export const adminCredit = (data, password) =>
+  api.post('/api/admin/credit', { ...data, password });
+
+export const adminGetTraders = (password) =>
+  api.get(`/api/admin/traders?password=${password}`);
+export const adminCreateTrader = (data, password) =>
+  api.post('/api/admin/traders', { ...data, password });
+export const adminUpdateTrader = (id, data, password) =>
+  api.patch(`/api/admin/traders/${id}`, { ...data, password });
+export const adminDeleteTrader = (id, password) =>
+  api.delete(`/api/admin/traders/${id}?password=${password}`);
+
+export const adminContractInfo = (password) =>
+  api.get(`/api/admin/contract-info?password=${password}`);
+export const adminFundContract = (data, password) =>
+  api.post('/api/admin/fund-contract', { ...data, password });
+export const adminSetPaused = (paused, password) =>
+  api.post('/api/admin/set-paused', { paused, password });
+export const adminEmergencyWithdraw = (password) =>
+  api.post('/api/admin/emergency-withdraw', { password });
+export const adminSetTreasury = (address, password) =>
+  api.post('/api/admin/set-treasury', { address, password });
+
+export const adminGetInvestments = (password, address = '', status = '') =>
+  api.get(`/api/admin/investments?password=${password}${address ? `&address=${address}` : ''}${status ? `&status=${status}` : ''}`);
+export const adminManageInvestment = (id, action, password) =>
+  api.patch(`/api/admin/investments/${id}`, { action, password });
+export const adminGetStakes = (address) =>
+  api.get(`/api/stake?address=${address}`);
+export const adminGetPlatform = (password) =>
+  api.get(`/api/admin/platform?password=${password}`);
+export const adminSetPlatform = (data, password) =>
+  api.post('/api/admin/platform', { ...data, password });

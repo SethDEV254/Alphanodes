@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd frontend && npm ci && npm run build",
+  "outputDirectory": "frontend/dist",
+  "framework": null,
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/[...path]" },
+    { "src": "/health", "dest": "/api/[...path]" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

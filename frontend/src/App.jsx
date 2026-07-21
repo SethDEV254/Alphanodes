@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { getUser, createUser, getBalance, getCryptoPrices } from './api.js';
+import { useUserBalance } from './hooks/useContract.js';
 import Layout from './components/Layout.jsx';
 import Connect from './pages/Connect.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -21,7 +22,10 @@ export default function App() {
   const { address, isConnected } = useAccount();
   const [user, setUser] = useState(null);
   const [balance, setBalance] = useState(null);
+  const [liveBalance, setLiveBalance] = useState(null);
   const [bnbPrice, setBnbPrice] = useState(BNB_PRICE_USD);
+  const [txVersion, setTxVersion] = useState(0);
+  const { balance: onChainBal, refetch: refetchChain } = useUserBalance(address);
 
   useEffect(() => {
     getCryptoPrices()
@@ -79,10 +83,38 @@ export default function App() {
     } catch (e) {}
   };
 
-  const refreshBalance = () => fetchBalance();
+  // Poll backend balance every 3s — catches admin credits and event-synced deposits fast
+  useEffect(() => {
+    if (!address) return;
+    const t = setInterval(() => fetchBalance(address), 3_000);
+    return () => clearInterval(t);
+  }, [address]);
+
+  // Refresh immediately when user returns to the tab
+  useEffect(() => {
+    if (!address) return;
+    const onFocus = () => fetchBalance(address);
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [address]);
+
+  const refreshBalance = () => fetchBalance(address);
+
+  // Call after any on-chain tx: refetches chain + backend + bumps txVersion
+  const refreshAll = async () => {
+    setTxVersion(v => v + 1);
+    await Promise.all([refetchChain(), fetchBalance(address)]);
+  };
+
+  // Authoritative trading balance — latest of: post-tx live read, DB, on-chain wagmi hook
+  const tradingBalance = liveBalance?.tradingBalance ?? balance?.tradingBalance ?? onChainBal?.tradingBalance ?? null;
 
   return (
-    <AppContext.Provider value={{ user, balance, refreshBalance, address, bnbPrice }}>
+    <AppContext.Provider value={{ user, balance, onChainBal, liveBalance, setLiveBalance, tradingBalance, refreshBalance, refreshAll, address, bnbPrice, txVersion }}>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={isConnected ? <Navigate to="/dashboard" /> : <Connect />} />

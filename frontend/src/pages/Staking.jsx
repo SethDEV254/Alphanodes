@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../App.jsx';
 import {
-  getStakes, claimTranche, claimStakingReferral, getStakingReferralStats,
+  getStakes, createStake, unstake as apiUnstake, earlyUnlock as apiEarlyUnlock,
+  claimTranche, claimStakingReferral, getStakingReferralStats,
 } from '../api.js';
 import { useAlphaNodes } from '../hooks/useContract.js';
 
@@ -29,7 +30,7 @@ function IconBox({ color, size = 36, children }) {
 }
 
 export default function Staking() {
-  const { address, balance, refreshBalance } = useApp();
+  const { address, balance, tradingBalance: ctxTradingBal, refreshBalance, refreshAll } = useApp();
   const contract = useAlphaNodes();
   const [stakes, setStakes] = useState([]);
   const [refStats, setRefStats] = useState(null);
@@ -61,29 +62,35 @@ export default function Staking() {
   const handleStake = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return showMsg('Enter amount', true);
-    if (amt > (balance?.tradingBalance || 0)) return showMsg('Insufficient balance', true);
+    const avail = ctxTradingBal ?? balance?.tradingBalance ?? null;
+    if (avail !== null && amt > avail) return showMsg('Insufficient balance', true);
     setLoading('stake');
     try {
-      await contract.stake(amt, duration.days);
+      const r = await createStake({ address, amount: amt, duration: duration.days });
+      if (!r.data.success) return showMsg(r.data.error || 'Failed to stake', true);
       showMsg('BNB staked successfully!');
       setAmount('');
       fetchData();
-      refreshBalance();
+      refreshAll();
     } catch (e) {
-      showMsg(e.shortMessage || e.message || 'Failed to stake', true);
+      showMsg(e.message || 'Failed to stake', true);
     } finally {
       setLoading('');
     }
   };
 
   const handleUnstake = async (s) => {
-    const contractId = s.contractId ?? s._id;
     setLoading('unstake_' + s._id);
     try {
-      await contract.unstake(contractId);
+      if (s.contractId != null) {
+        await contract.unstake(s.contractId);
+      } else {
+        const r = await apiUnstake(s._id, { address });
+        if (!r.data.success) return showMsg(r.data.error || 'Failed', true);
+      }
       showMsg('Unstaked successfully!');
       fetchData();
-      refreshBalance();
+      refreshAll();
     } catch (e) {
       showMsg(e.shortMessage || e.message || 'Failed to unstake', true);
     } finally {
@@ -93,13 +100,17 @@ export default function Staking() {
 
   const handleEarlyUnlock = async (s) => {
     if (!confirm('Early unlock applies a penalty fee. Continue?')) return;
-    const contractId = s.contractId ?? s._id;
     setLoading('unlock_' + s._id);
     try {
-      await contract.earlyUnlock(contractId);
+      if (s.contractId != null) {
+        await contract.earlyUnlock(s.contractId);
+      } else {
+        const r = await apiEarlyUnlock(s._id, { address });
+        if (!r.data.success) return showMsg(r.data.error || 'Failed', true);
+      }
       showMsg('Early unlock completed');
       fetchData();
-      refreshBalance();
+      refreshAll();
     } catch (e) {
       showMsg(e.shortMessage || e.message || 'Failed to unlock', true);
     } finally {
@@ -114,7 +125,7 @@ export default function Staking() {
       if (!r.data.success) return showMsg(r.data.error || 'Failed', true);
       showMsg('Tranche claimed!');
       fetchData();
-      refreshBalance();
+      refreshAll();
     } catch (e) {
       showMsg('Failed to claim', true);
     } finally {
@@ -129,7 +140,7 @@ export default function Staking() {
       if (!r.data.success) return showMsg(r.data.error || 'Failed', true);
       showMsg('Referral earnings claimed!');
       fetchData();
-      refreshBalance();
+      refreshAll();
     } catch (e) {
       showMsg('Failed to claim', true);
     } finally {

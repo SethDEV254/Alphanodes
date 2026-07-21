@@ -28,6 +28,7 @@ export function useAlphaNodes() {
     unstake: (id) => call('unstake', [BigInt(id)]),
     earlyUnlock: (id) => call('earlyUnlock', [BigInt(id)]),
     fundContract: (amountEth) => call('fundContract', [], { value: toWei(amountEth) }),
+    approveWithdrawal: (id) => call('approveWithdrawal', [BigInt(id)]),
   };
 }
 
@@ -46,7 +47,7 @@ export function useUserBalance(address) {
     abi: ABI,
     functionName: 'getUser',
     args: [address],
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 15_000 },
   });
 
   const balance = raw ? {
@@ -176,7 +177,7 @@ export function useUserWithdrawals(address) {
     abi: ABI,
     functionName: 'getUserWithdrawals',
     args: [address],
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 20_000 },
   });
 
   const { data: rawList, refetch: refetchData } = useReadContracts({

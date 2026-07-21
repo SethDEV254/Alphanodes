@@ -1,8 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
-import { getAiInvestments, createAiInvestment, compoundAiInvestment } from '../api.js';
+import { getAiInvestments, createAiInvestment, claimAiInvestment, compoundAiInvestment } from '../api.js';
 import { useAlphaNodes, useUserBalance } from '../hooks/useContract.js';
+
+const BSC_RPC = 'https://bsc-dataseed.binance.org/';
+async function waitForTx(hash) {
+  for (let i = 0; i < 40; i++) {
+    const res = await fetch(BSC_RPC, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getTransactionReceipt', params: [hash], id: 1 }),
+    });
+    const data = await res.json();
+    if (data.result?.status === '0x1') return;
+    if (data.result?.status === '0x0') throw new Error('Transaction reverted');
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  throw new Error('Transaction timeout');
+}
 import NeuralNetwork from '../components/NeuralNetwork.jsx';
 import { TxSuccess } from '../components/TxSuccess.jsx';
 
@@ -169,7 +184,7 @@ function CoinDropdown({ value, onChange }) {
 }
 
 export default function AIAgents() {
-  const { address, balance, refreshBalance, bnbPrice } = useApp();
+  const { address, balance, tradingBalance: ctxTradingBal, refreshBalance, refreshAll, bnbPrice } = useApp();
   const { address: wagmiAddress } = useAccount();
   const { balance: onChainBal } = useUserBalance(wagmiAddress);
   const contract = useAlphaNodes();
@@ -211,13 +226,17 @@ export default function AIAgents() {
     if (selected.maxUsd !== null && usd > selected.maxUsd)
       return showMsg(`Max for ${selected.name} is $${selected.maxUsd}`, true);
     const bnbAmt = usd / bnbPrice;
-    if (bnbAmt > tradingBal)
+    // Only block if balance has loaded and is genuinely insufficient
+    if (tradingBal !== null && bnbAmt > tradingBal)
       return showMsg('Insufficient trading balance', true);
     setLoading('deploy');
     try {
       const r = await createAiInvestment({
         address,
         packageId: selected._id,
+        packageName: selected.name,
+        dailyRate: selected.dailyRate,
+        duration: selected.duration,
         amount: bnbAmt,
         coin: selectedCoin.symbol,
       });
@@ -228,25 +247,29 @@ export default function AIAgents() {
       setSuccessTx({
         title: 'AI Deployed!',
         subtitle: `${selected.name} running on ${selectedCoin.symbol}`,
-        amount: `-$${usdAmt.toFixed(2)} from trading balance`,
+        amount: `-$${usd.toFixed(2)} from trading balance`,
       });
       fetchInvestments();
-      refreshBalance();
+      await refreshAll();
     } catch (e) {
-      showMsg(e.shortMessage || e.message || 'Deploy failed', true);
+      showMsg(e.message || 'Deploy failed', true);
     } finally {
       setLoading('');
     }
   };
 
   const handleClaim = async (inv) => {
-    const contractId = inv.contractId ?? inv._id;
     setLoading(inv._id);
     try {
-      await contract.claimAIEarnings(contractId);
+      if (inv.contractId != null) {
+        await contract.claimAIEarnings(inv.contractId);
+      } else {
+        const r = await claimAiInvestment({ address, investmentId: inv._id });
+        if (!r.data.success) return showMsg(r.data.error || 'Claim failed', true);
+      }
       showMsg('Profit taken!');
       fetchInvestments();
-      refreshBalance();
+      await refreshAll();
     } catch (e) {
       showMsg(e.shortMessage || e.message || 'Claim failed', true);
     } finally {
@@ -262,7 +285,7 @@ export default function AIAgents() {
       const { compounded, newAmount } = r.data.data;
       showMsg(`Compounded ${compounded.toFixed(6)} BNB → new principal: ${newAmount.toFixed(4)} BNB`);
       fetchInvestments();
-      refreshBalance();
+      await refreshAll();
     } catch (e) {
       showMsg('Compound failed', true);
     } finally {
@@ -272,8 +295,10 @@ export default function AIAgents() {
 
   const active = investments.filter(i => i.status === 'active');
   const completed = investments.filter(i => i.status !== 'active');
-  const tradingBal = onChainBal?.tradingBalance ?? balance?.tradingBalance ?? 0;
-  const tradingUsd = (tradingBal * bnbPrice).toFixed(2);
+  // Use context tradingBalance — updated every 3s, includes admin credits + on-chain deposits
+  const tradingBal = ctxTradingBal ?? balance?.tradingBalance ?? null;
+  const tradingBnb = tradingBal ?? 0;
+  const tradingUsd = (tradingBnb * bnbPrice).toFixed(2);
   const usdAmt = parseFloat(amount) || 0;
   const bnbEquiv = usdAmt > 0 ? (usdAmt / bnbPrice).toFixed(6) : null;
   const dailyEst = selected && usdAmt ? (usdAmt * selected.dailyRate / 100).toFixed(2) : null;
@@ -425,7 +450,7 @@ export default function AIAgents() {
               }}>
                 <span style={{ fontSize: 11, color: '#555' }}>Available</span>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#3b9eff' }}>
-                  ${tradingUsd} <span style={{ fontSize: 10, fontWeight: 400, color: '#444' }}>({fmt(tradingBal)} BNB)</span>
+                  ${tradingUsd} <span style={{ fontSize: 10, fontWeight: 400, color: '#444' }}>({fmt(tradingBnb)} BNB)</span>
                 </span>
               </div>
 
@@ -514,13 +539,29 @@ export default function AIAgents() {
         {active.length === 0 ? (
           <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>No active deployments yet</div>
         ) : active.map(inv => {
-          const now = Date.now();
-          const start = new Date(inv.startDate).getTime();
-          const end = new Date(inv.endDate).getTime();
-          const elapsed = Math.min(now, end) - start;
-          const days = elapsed / 86400000;
-          const rate = (inv.dailyRateBps || 0) / 10000;
-          const pending = Math.max(0, inv.amount * rate * days - (inv.claimedEarnings || 0));
+          // tick is read here so React re-renders this map every second
+          const now = Date.now() + (tick * 0);
+
+          // Normalize date fields — backend uses startDate/endDate, on-chain uses startTime/endTime (unix s)
+          const start = inv.startDate ? new Date(inv.startDate).getTime()
+            : inv.startTime ? inv.startTime * 1000
+            : new Date(inv.createdAt).getTime();
+          const durationMs = (inv.duration || 30) * 86400000;
+          const end = inv.endDate ? new Date(inv.endDate).getTime()
+            : inv.endTime ? inv.endTime * 1000
+            : start + durationMs;
+
+          // Normalize rate — backend: dailyRate is % (1.0 = 1%); on-chain: dailyRateBps (100 = 1%)
+          const rate = inv.dailyRate ? inv.dailyRate / 100 : (inv.dailyRateBps || 0) / 10000;
+
+          // Real-time pending: DB earnedAmount + live accumulation since last cron tick
+          const lastCron = inv.lastCronAt ? new Date(inv.lastCronAt).getTime() : start;
+          const sinceCronDays = Math.max(0, (now - lastCron) / 86400000);
+          const liveExtra = sinceCronDays * rate * inv.amount;
+          const pending = Math.max(0, (inv.earnedAmount || 0) + liveExtra - (inv.claimedEarnings || 0));
+          // Per-second rate for display
+          const perSec = rate * inv.amount / 86400;
+
           const progress = Math.min(100, ((now - start) / (end - start)) * 100);
           const coinInfo = COINS.find(c => c.symbol === inv.coin) || COINS[0];
           const isCompounding = loading === `compound-${inv._id}`;
@@ -544,12 +585,16 @@ export default function AIAgents() {
                     </span>
                   </div>
                   <div style={{ fontSize: 11, color: '#555' }}>
-                    {fmt(inv.amount)} BNB · {inv.dailyRateBps ? inv.dailyRateBps / 100 : 0}%/day
+                    {fmt(inv.amount)} BNB · {inv.dailyRate || (inv.dailyRateBps ? inv.dailyRateBps / 100 : 0)}%/day
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ color: '#00c076', fontWeight: 800, fontSize: 14 }}>+{pending.toFixed(6)}</div>
-                  <div style={{ fontSize: 10, color: '#555' }}>BNB accrued</div>
+                  <div style={{ color: '#00c076', fontWeight: 800, fontSize: 13, fontFamily: 'monospace' }}>
+                    +{pending.toFixed(8)}
+                  </div>
+                  <div style={{ fontSize: 9, color: '#444', marginTop: 2 }}>
+                    BNB · +{perSec.toFixed(8)}/sec
+                  </div>
                 </div>
               </div>
 
@@ -558,7 +603,7 @@ export default function AIAgents() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                   <span style={{ fontSize: 10, color: '#444' }}>{progress.toFixed(1)}% complete</span>
                   <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#666', fontWeight: 700 }}>
-                    {countdown(inv.endDate)}
+                    {countdown(new Date(end))}
                   </span>
                 </div>
                 <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>

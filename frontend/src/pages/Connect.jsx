@@ -592,7 +592,7 @@ export default function Connect() {
             </div>
 
             <button
-              onClick={async () => { setShowAvatarModal(false); await clearStaleWCSessions(); open(); }}
+              onClick={() => { setShowAvatarModal(false); open(); }}
               disabled={!selectedAvatar}
               style={{
                 background: activeAv ? activeAv.color : 'rgba(255,255,255,0.08)',
@@ -618,7 +618,7 @@ export default function Connect() {
               or{' '}
               <span
                 style={{ cursor: 'pointer', color: '#555', textDecoration: 'underline' }}
-                onClick={async () => { setShowAvatarModal(false); await clearStaleWCSessions(); open(); }}
+                onClick={() => { setShowAvatarModal(false); open(); }}
               >
                 skip and connect
               </span>

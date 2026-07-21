@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
-import { getTransactions, compound, getAiInvestments } from '../api.js';
-import { useAlphaNodes, useUserBalance, fetchOnChainBalance } from '../hooks/useContract.js';
+import { getTransactions, compound, getAiInvestments, requestWithdrawal, getWithdrawalStatus } from '../api.js';
+import { useAlphaNodes, useUserBalance, useUserWithdrawals, fetchOnChainBalance } from '../hooks/useContract.js';
 import { CONTRACT_ADDRESS } from '../config.js';
 import { TxSuccess } from '../components/TxSuccess.jsx';
 
@@ -92,7 +92,7 @@ function IconBox({ color, size = 40, children }) {
 }
 
 export default function Dashboard() {
-  const { address, user, balance, refreshBalance, bnbPrice } = useApp();
+  const { address, user, balance, tradingBalance: ctxTradingBal, setLiveBalance, refreshBalance, refreshAll, bnbPrice, txVersion } = useApp();
   const navigate = useNavigate();
   const [txs, setTxs] = useState([]);
   const [depositAmt, setDepositAmt] = useState('');
@@ -102,13 +102,16 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('deposit');
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [activeInvestments, setActiveInvestments] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [showTxs, setShowTxs] = useState(false);
+  const [liveBalance, setLocalLiveBalance] = useState(null);
   const [liveAiPending, setLiveAiPending] = useState(0);
   const [tick, setTick] = useState(0);
 
   const contract = useAlphaNodes();
   const { address: wagmiAddress } = useAccount();
   const { balance: onChainBal, refetch: refetchOnChain } = useUserBalance(wagmiAddress);
-  const [liveBalance, setLiveBalance] = useState(null);
+  const { withdrawals: onChainWithdrawals, refetch: refetchWithdrawals } = useUserWithdrawals(wagmiAddress);
   const [successTx, setSuccessTx] = useState(null);
   const [walletBnb, setWalletBnb] = useState(0);
 
@@ -125,8 +128,23 @@ export default function Dashboard() {
   }, [wagmiAddress]);
 
   useEffect(() => {
-    if (address) { fetchTxs(); fetchActiveInvestments(); }
+    if (address) { fetchTxs(); fetchActiveInvestments(); fetchWithdrawals(); }
   }, [address]);
+
+  // Poll withdrawal status every 5s to catch admin approval/rejection without page refresh
+  useEffect(() => {
+    if (!address) return;
+    const t = setInterval(fetchWithdrawals, 5_000);
+    return () => clearInterval(t);
+  }, [address]);
+
+  useEffect(() => {
+    if (address && txVersion > 0) {
+      fetchTxs();
+      fetchActiveInvestments();
+      fetchWithdrawals();
+    }
+  }, [txVersion]);
 
   useEffect(() => {
     const calc = () => {
@@ -160,6 +178,13 @@ export default function Dashboard() {
     } catch (e) {}
   };
 
+  const fetchWithdrawals = async () => {
+    try {
+      const r = await getWithdrawalStatus(address);
+      setWithdrawals(r.data.data || []);
+    } catch (e) {}
+  };
+
   const showMsg = (m, err) => {
     setMsg({ text: m, err });
     setTimeout(() => setMsg(''), 3500);
@@ -190,9 +215,9 @@ export default function Dashboard() {
       const depositHash = await contract.deposit(bnbAmt);
       showMsg('Confirming on BSC...');
       await waitForTx(depositHash);
+      // Immediately read on-chain balance and push to global context
       const fresh = await fetchOnChainBalance(wagmiAddress, CONTRACT_ADDRESS);
-      if (fresh) setLiveBalance(fresh);
-      const newBal = fresh?.tradingBalance ?? 0;
+      if (fresh) { setLocalLiveBalance(fresh); setLiveBalance(fresh); }
       setDepositAmt('');
       setShowFundsModal(false);
       setMsg('');
@@ -202,9 +227,14 @@ export default function Dashboard() {
         amount: `+$${fmtUsd(bnbAmt, bnbPrice)}`,
         hash: depositHash,
       });
-      refreshBalance();
+      await refreshAll();
       fetchTxs();
-      await refetchOnChain();
+      refetchOnChain();
+      // Retry backend poll every 1s for 10s until DB catches up with the event
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        refreshBalance();
+      }
     } catch (e) {
       showMsg(e.shortMessage || e.message || 'Transaction failed', true);
     } finally {
@@ -215,30 +245,31 @@ export default function Dashboard() {
   const handleWithdraw = async () => {
     const usd = parseFloat(withdrawAmt);
     if (!usd || usd <= 0) return showMsg('Enter a valid amount', true);
-    const earningsUsd = aiEarnings * bnbPrice;
-    if (usd > earningsUsd) return showMsg('Insufficient earnings balance', true);
-    if (!address) return showMsg('Wallet not connected', true);
     const bnbAmt = usd / bnbPrice;
+    const avail = tradingBal;
+    if (bnbAmt > avail) return showMsg(`Insufficient balance (have ${avail.toFixed(6)} BNB)`, true);
+    if (!address) return showMsg('Wallet not connected', true);
     setLoading('withdraw');
     try {
-      showMsg('Confirm in your wallet...');
-      const wHash = await contract.requestWithdrawal(bnbAmt);
-      showMsg('Confirming on BSC...');
-      await waitForTx(wHash);
+      const r = await requestWithdrawal({ address, amount: bnbAmt });
+      if (!r.data.success) return showMsg(r.data.error || 'Withdrawal failed', true);
       setWithdrawAmt('');
       setShowFundsModal(false);
       setMsg('');
+      const auto = r.data.autoProcessed;
       setSuccessTx({
-        title: 'Withdrawal Submitted!',
-        subtitle: 'BNB will arrive in your wallet shortly',
+        title: auto ? 'Withdrawal Sent!' : 'Withdrawal Requested!',
+        subtitle: auto
+          ? `${bnbAmt.toFixed(6)} BNB sent to your wallet`
+          : 'Pending admin approval — you\'ll be notified when processed',
         amount: `-$${usd.toFixed(2)}`,
-        hash: wHash,
+        hash: r.data.txHash,
       });
-      const fresh = await fetchOnChainBalance(wagmiAddress, CONTRACT_ADDRESS);
-      if (fresh) setLiveBalance(fresh);
-      refreshBalance();
+      await refreshAll();
+      fetchTxs();
+      fetchWithdrawals();
     } catch (e) {
-      showMsg(e.shortMessage || e.message || 'Withdrawal failed', true);
+      showMsg(e.message || 'Withdrawal failed', true);
     } finally {
       setLoading('');
     }
@@ -250,7 +281,8 @@ export default function Dashboard() {
       const r = await compound({ address });
       if (!r.data.success) return showMsg(r.data.error || 'Failed to compound', true);
       showMsg('Earnings compounded to trading balance!');
-      refreshBalance();
+      await refreshAll();
+      fetchTxs();
     } catch (e) {
       showMsg('Failed to compound', true);
     } finally {
@@ -258,9 +290,31 @@ export default function Dashboard() {
     }
   };
 
-  // Prefer live on-chain balance (updated instantly after tx) over API balance
-  const bal = liveBalance || onChainBal || balance || {};
-  const tradingBal = bal.tradingBalance || 0;
+  const handleClaimWithdrawal = async (w) => {
+    setLoading(`claim-${w.contractId}`);
+    try {
+      showMsg('Confirm in your wallet...');
+      const txHash = await contract.claimWithdrawal(w.contractId);
+      showMsg('Confirming on BSC...');
+      await waitForTx(txHash);
+      setSuccessTx({
+        title: 'Withdrawal Claimed!',
+        subtitle: 'BNB sent to your wallet',
+        amount: `+${w.amount.toFixed(4)} BNB`,
+        hash: txHash,
+      });
+      refetchWithdrawals();
+      await refreshAll();
+      fetchTxs();
+    } catch (e) {
+      showMsg(e.shortMessage || e.message || 'Claim failed', true);
+    } finally {
+      setLoading('');
+    }
+  };
+
+  const bal = liveBalance || balance || {};
+  const tradingBal = ctxTradingBal ?? bal.tradingBalance ?? 0;
   const totalWithdrawn = bal.totalWithdrawn || 0;
   const aiEarnings = (bal.aiEarnings || 0) + liveAiPending;
   const referralEarnings = bal.referralEarnings || 0;
@@ -393,7 +447,7 @@ export default function Dashboard() {
           <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <div style={{ fontSize: 9, color: '#888', textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 700, marginBottom: 4 }}>
-                Earnings
+                Total Earnings
               </div>
               <div style={{ fontSize: 17, fontWeight: 800, color: '#00c076', lineHeight: 1 }}>
                 {fmtUsd(totalEarnings, bnbPrice)}&nbsp;
@@ -611,15 +665,15 @@ export default function Dashboard() {
 
             {activeTab === 'withdraw' && (
               <div style={{ padding: '16px 20px 32px' }}>
-                {/* Earnings + MAX */}
+                {/* Available + MAX */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontSize: 11, color: '#555' }}>
-                    Earnings:{' '}
-                    <span style={{ color: '#00c076', fontWeight: 700 }}>${fmtUsd(aiEarnings, bnbPrice)}</span>
-                    <span style={{ color: '#444', marginLeft: 6 }}>({fmt(aiEarnings)} BNB)</span>
+                    Available:{' '}
+                    <span style={{ color: '#00c076', fontWeight: 700 }}>${fmtUsd(tradingBal, bnbPrice)}</span>
+                    <span style={{ color: '#444', marginLeft: 6 }}>({fmt(tradingBal)} BNB)</span>
                   </span>
                   <button
-                    onClick={() => setWithdrawAmt((aiEarnings * bnbPrice).toFixed(2))}
+                    onClick={() => setWithdrawAmt((tradingBal * bnbPrice).toFixed(2))}
                     style={{
                       fontSize: 10, fontWeight: 800, color: '#00c076', background: 'rgba(0,192,118,0.08)',
                       border: '1px solid rgba(0,192,118,0.2)', borderRadius: 5, padding: '3px 8px',
@@ -673,7 +727,10 @@ export default function Dashboard() {
                     ≈ <span style={{ color: '#00c076', fontWeight: 700 }}>
                       {(parseFloat(withdrawAmt) / bnbPrice).toFixed(6)} BNB
                     </span>
-                    <span style={{ color: '#333', marginLeft: 8 }}>→ your wallet</span>
+                    <span style={{ color: '#333', marginLeft: 8 }}>→ pending admin approval</span>
+                    {parseFloat(withdrawAmt) / bnbPrice > tradingBal && (
+                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Exceeds balance</span>
+                    )}
                   </div>
                 )}
 
@@ -864,45 +921,135 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Transactions */}
-      <div className="card" style={{ padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-          Recent Transactions
+      {/* Withdrawal Status */}
+      {withdrawals.filter(w => w.status !== 'completed' && w.status !== 'rejected').length > 0 && (
+        <div className="card" style={{ padding: '14px 16px', marginBottom: 12, borderTop: '2px solid #ff8c00' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#ff8c00', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+            Withdrawal Status
+          </div>
+          {withdrawals.filter(w => w.status !== 'completed' && w.status !== 'rejected').map(w => {
+            const isPending = w.status === 'pending';
+            const isApproved = w.status === 'approved';
+            const color = isApproved ? '#00c076' : '#ff8c00';
+            return (
+              <div key={w._id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '12px 14px', marginBottom: 6, borderRadius: 10,
+                background: isApproved ? 'rgba(0,192,118,0.06)' : 'rgba(252,140,0,0.05)',
+                border: `1px solid ${isApproved ? 'rgba(0,192,118,0.2)' : 'rgba(252,140,0,0.15)'}`,
+              }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
+                    {w.amount.toFixed(6)} BNB
+                    <span style={{ fontSize: 11, color: '#555', fontWeight: 400, marginLeft: 8 }}>
+                      ≈ ${(w.amount * bnbPrice).toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#555', marginTop: 3 }}>
+                    {isPending && '⏳ Pending admin approval'}
+                    {isApproved && '✓ Approved — payment being processed'}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>
+                    Submitted {new Date(w.createdAt).toLocaleString()}
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 11, fontWeight: 800, padding: '4px 12px', borderRadius: 20,
+                  background: `${color}15`, border: `1px solid ${color}30`, color,
+                }}>
+                  {w.status.toUpperCase()}
+                </span>
+              </div>
+            );
+          })}
         </div>
-        {txs.length === 0 ? (
-          <div style={{ color: '#444', fontSize: 12, textAlign: 'center', padding: '24px 0' }}>No transactions yet</div>
-        ) : txs.slice(0, 15).map((tx, i) => {
-          const color = TX_COLORS[tx.type] || TX_COLORS.default;
-          const label = TX_LABELS[tx.type] || tx.type;
-          const isDebit = ['withdrawal', 'fee', 'ai_investment', 'loan_repay'].includes(tx.type);
-          return (
-            <div key={i} style={{
+      )}
+
+      {/* Recent completed withdrawals */}
+      {withdrawals.filter(w => w.status === 'completed' || w.status === 'rejected').length > 0 && (
+        <div className="card" style={{ padding: '14px 16px', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+            Past Withdrawals
+          </div>
+          {withdrawals.filter(w => w.status === 'completed' || w.status === 'rejected').slice(0, 5).map(w => (
+            <div key={w._id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '9px 10px', marginBottom: 4, borderRadius: 8,
-              background: 'rgba(255,255,255,0.015)', borderLeft: `3px solid ${color}`,
+              padding: '8px 10px', marginBottom: 4, borderRadius: 8,
+              background: 'rgba(255,255,255,0.02)',
             }}>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#ccc' }}>{label}</div>
-                <div style={{ fontSize: 10, color: '#444', marginTop: 1 }}>
-                  {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  {tx.status && tx.status !== 'completed' && (
-                    <span style={{
-                      marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                      background: tx.status === 'pending' ? 'rgba(252,213,53,0.1)' : 'rgba(0,192,118,0.1)',
-                      color: tx.status === 'pending' ? '#fcd535' : '#00c076',
-                      fontWeight: 700, textTransform: 'uppercase',
-                    }}>
-                      {tx.status}
-                    </span>
-                  )}
+                <div style={{ fontSize: 12, fontWeight: 700, color: w.status === 'completed' ? '#00c076' : '#ff4d4d' }}>
+                  {w.amount.toFixed(6)} BNB
+                </div>
+                <div style={{ fontSize: 10, color: '#444' }}>
+                  {new Date(w.createdAt).toLocaleDateString()}
                 </div>
               </div>
-              <div style={{ fontWeight: 800, fontSize: 13, color: isDebit ? '#ff4d4d' : '#00c076' }}>
-                {isDebit ? '−' : '+'}{fmt(tx.amount)} BNB
-              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                background: w.status === 'completed' ? 'rgba(0,192,118,0.1)' : 'rgba(255,77,77,0.1)',
+                color: w.status === 'completed' ? '#00c076' : '#ff4d4d',
+              }}>
+                {w.status.toUpperCase()}
+              </span>
             </div>
-          );
-        })}
+          ))}
+        </div>
+      )}
+
+      {/* Transactions — collapsed by default, expand on click */}
+      <div className="card" style={{ padding: '14px 16px' }}>
+        <button
+          onClick={() => setShowTxs(v => !v)}
+          style={{
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1 }}>
+            Transaction History {txs.length > 0 && <span style={{ color: '#556', fontWeight: 400 }}>({txs.length})</span>}
+          </span>
+          <span style={{ fontSize: 13, color: '#556' }}>{showTxs ? '▲' : '▼'}</span>
+        </button>
+
+        {showTxs && (
+          <div style={{ marginTop: 12 }}>
+            {txs.length === 0 ? (
+              <div style={{ color: '#444', fontSize: 12, textAlign: 'center', padding: '24px 0' }}>No transactions yet</div>
+            ) : txs.slice(0, 15).map((tx, i) => {
+              const color = TX_COLORS[tx.type] || TX_COLORS.default;
+              const label = TX_LABELS[tx.type] || tx.type;
+              const isDebit = ['withdrawal', 'fee', 'ai_investment', 'loan_repay'].includes(tx.type);
+              return (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '9px 10px', marginBottom: 4, borderRadius: 8,
+                  background: 'rgba(255,255,255,0.015)', borderLeft: `3px solid ${color}`,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#ccc' }}>{label}</div>
+                    <div style={{ fontSize: 10, color: '#444', marginTop: 1 }}>
+                      {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {tx.status && tx.status !== 'completed' && (
+                        <span style={{
+                          marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                          background: tx.status === 'pending' ? 'rgba(252,213,53,0.1)' : 'rgba(0,192,118,0.1)',
+                          color: tx.status === 'pending' ? '#fcd535' : '#00c076',
+                          fontWeight: 700, textTransform: 'uppercase',
+                        }}>
+                          {tx.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: isDebit ? '#ff4d4d' : '#00c076' }}>
+                    {isDebit ? '−' : '+'}{fmt(tx.amount)} BNB
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
