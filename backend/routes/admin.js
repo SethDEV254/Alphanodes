@@ -528,7 +528,7 @@ router.get('/ai-rates', auth, async (req, res) => {
   }
 });
 
-// POST /api/admin/ai-rates?password= — body: { rates: { 'alpha-x': {min,max}, core: {...}, max: {...} } }
+// POST /api/admin/ai-rates?password= — body: { rates: { core: {min,max}, max: {...} } }
 router.post('/ai-rates', auth, async (req, res) => {
   try {
     const { rates } = req.body;

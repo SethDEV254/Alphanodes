@@ -24,13 +24,12 @@ import { TxSuccess } from '../components/TxSuccess.jsx';
 const fmtUsd = (n) => n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 
 const fmt = (n) => (n || 0).toFixed(4);
-const ICONS = { 'alpha-x': '◈', core: '◎', max: '⬡' };
+const ICONS = { core: '◎', max: '⬡' };
 
 // Hardcoded defaults — overridden at runtime by admin-configured rates from /api/ai-investment/packages
 const DEFAULT_PACKAGES = [
-  { _id: 'alpha-x', contractId: 0, name: 'Alpha X', rateMin: 0.5, rateMax: 1.0, minUsd: 0,    maxUsd: 99,   duration: 30 },
-  { _id: 'core',    contractId: 1, name: 'Core',    rateMin: 1.0, rateMax: 1.5, minUsd: 100,  maxUsd: 999,  duration: 60 },
-  { _id: 'max',     contractId: 2, name: 'Max',     rateMin: 0.5, rateMax: 2.0, minUsd: 1000, maxUsd: null, duration: 90 },
+  { _id: 'core', contractId: 1, name: 'Core', rateMin: 1.0, rateMax: 1.5, minUsd: 100,  maxUsd: 999,  duration: 60 },
+  { _id: 'max',  contractId: 2, name: 'Max',  rateMin: 0.5, rateMax: 2.0, minUsd: 1000, maxUsd: null, duration: 90 },
 ];
 const withAvgRate = (pkgs) => pkgs.map(p => ({ ...p, dailyRate: Number(((p.rateMin + p.rateMax) / 2).toFixed(4)) }));
 
@@ -346,7 +345,7 @@ export default function AIAgents() {
       {/* Packages */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
         {packages.map((pkg, idx) => {
-          const colors = ['#fcd535', '#00c076', '#818cf8'];
+          const colors = ['#00c076', '#818cf8'];
           const color = colors[idx];
           return (
             <div
