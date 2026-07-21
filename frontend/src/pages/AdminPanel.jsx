@@ -5,6 +5,7 @@ import {
   adminGetTraders, adminCreateTrader, adminUpdateTrader, adminDeleteTrader,
   adminContractInfo, adminFundContract, adminSetPaused, adminEmergencyWithdraw, adminSetTreasury,
   adminGetInvestments, adminManageInvestment, adminGetStakes, adminGetPlatform, adminSetPlatform,
+  adminGetAiRates, adminSetAiRates,
 } from '../api.js';
 
 const fmt = (n) => Number(n || 0).toFixed(2);
@@ -21,6 +22,7 @@ const SIDEBAR = {
     { id: 'accounts', label: 'Accounts', icon: '◎' },
     { id: 'traders', label: 'Traders', icon: '◈' },
     { id: 'investments', label: 'AI Investments', icon: '◆' },
+    { id: 'ai-rates', label: 'AI Rates', icon: '◈' },
     { id: 'stakes', label: 'Stakes', icon: '⊟' },
     { id: 'copytrades', label: 'Copy Trades', icon: '⊡' },
     { id: 'withdrawals', label: 'Withdrawals', icon: '⊠' },
@@ -702,6 +704,78 @@ function PlatformTab({ password, showMsg }) {
   );
 }
 
+function AiRatesTab({ password, showMsg }) {
+  const [rates, setRates] = useState(null);
+  const [loading, setLoading] = useState('');
+
+  useEffect(() => { fetchRates(); }, []);
+
+  const fetchRates = async () => {
+    try {
+      const r = await adminGetAiRates(password);
+      if (r.data.success) setRates(r.data.data);
+    } catch {}
+  };
+
+  const setField = (id, field, value) => {
+    setRates(r => ({ ...r, [id]: { ...r[id], [field]: value } }));
+  };
+
+  const handleSave = async () => {
+    for (const id of Object.keys(rates || {})) {
+      const min = Number(rates[id].min);
+      const max = Number(rates[id].max);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < min) {
+        return showMsg(`Invalid range for ${rates[id].name || id}`, true);
+      }
+    }
+    setLoading('save');
+    try {
+      const r = await adminSetAiRates(rates, password);
+      if (r.data.success) showMsg('AI rates updated');
+      else showMsg(r.data.error || 'Failed', true);
+    } catch { showMsg('Request failed', true); }
+    finally { setLoading(''); }
+  };
+
+  const card = { background: 'rgba(12,14,20,0.95)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', padding: 24, marginBottom: 16, maxWidth: 680 };
+  const inp = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' };
+  const lbl = { fontSize: 10, color: '#556', marginBottom: 6, display: 'block', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' };
+
+  if (!rates) return <div style={{ padding: '28px 32px', color: '#556' }}>Loading...</div>;
+
+  return (
+    <div style={{ padding: '28px 32px' }}>
+      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>AI Rates</div>
+      <div style={{ fontSize: 12, color: '#445', marginBottom: 24 }}>
+        Daily return range per AI package. Each new deployment locks in a random rate within its band — actual returns average out across the range shown.
+      </div>
+
+      {Object.entries(rates).map(([id, r]) => (
+        <div key={id} style={{ ...card }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>{r.name || id}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Min Daily %</label>
+              <input style={inp} type="number" step="0.01" min="0" value={r.min}
+                onChange={e => setField(id, 'min', e.target.value)} />
+            </div>
+            <div>
+              <label style={lbl}>Max Daily %</label>
+              <input style={inp} type="number" step="0.01" min="0" value={r.max}
+                onChange={e => setField(id, 'max', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <button onClick={handleSave} disabled={loading === 'save'} style={{ padding: '12px 24px', background: 'linear-gradient(135deg,#fcd535,#f59e0b)', color: '#0d0d0d', fontWeight: 800, border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13 }}>
+        {loading === 'save' ? 'Saving...' : 'Save Rates'}
+      </button>
+    </div>
+  );
+}
+
 // Login screen
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
@@ -1218,6 +1292,7 @@ export default function AdminPanel() {
 
         {tab === 'traders' && <TradersTab password={password} showMsg={showMsg} />}
         {tab === 'investments' && <InvestmentsTab password={password} showMsg={showMsg} />}
+        {tab === 'ai-rates' && <AiRatesTab password={password} showMsg={showMsg} />}
         {tab === 'stakes' && <StakesTab password={password} showMsg={showMsg} />}
         {tab === 'contract' && <ContractTab password={password} showMsg={showMsg} />}
         {tab === 'platform' && <PlatformTab password={password} showMsg={showMsg} />}

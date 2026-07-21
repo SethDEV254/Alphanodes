@@ -96,3 +96,8 @@ export const adminGetPlatform = (password) =>
   api.get(`/api/admin/platform?password=${password}`);
 export const adminSetPlatform = (data, password) =>
   api.post('/api/admin/platform', { ...data, password });
+
+export const adminGetAiRates = (password) =>
+  api.get(`/api/admin/ai-rates?password=${password}`);
+export const adminSetAiRates = (rates, password) =>
+  api.post('/api/admin/ai-rates', { rates, password });

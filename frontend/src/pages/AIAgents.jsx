@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
-import { getAiInvestments, createAiInvestment, claimAiInvestment, compoundAiInvestment } from '../api.js';
+import { getAiInvestments, getAiPackages, createAiInvestment, claimAiInvestment, compoundAiInvestment } from '../api.js';
 import { useAlphaNodes, useUserBalance } from '../hooks/useContract.js';
 
 const BSC_RPC = 'https://bsc-dataseed.binance.org/';
@@ -26,11 +26,13 @@ const fmtUsd = (n) => n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 const fmt = (n) => (n || 0).toFixed(4);
 const ICONS = { 'alpha-x': '◈', core: '◎', max: '⬡' };
 
-const PACKAGES = [
-  { _id: 'alpha-x', contractId: 0, name: 'Alpha X', dailyRate: 1.0, minUsd: 0,    maxUsd: 99,   duration: 30 },
-  { _id: 'core',    contractId: 1, name: 'Core',    dailyRate: 1.5, minUsd: 100,  maxUsd: 999,  duration: 60 },
-  { _id: 'max',     contractId: 2, name: 'Max',     dailyRate: 2.0, minUsd: 1000, maxUsd: null, duration: 90 },
+// Hardcoded defaults — overridden at runtime by admin-configured rates from /api/ai-investment/packages
+const DEFAULT_PACKAGES = [
+  { _id: 'alpha-x', contractId: 0, name: 'Alpha X', rateMin: 0.5, rateMax: 1.0, minUsd: 0,    maxUsd: 99,   duration: 30 },
+  { _id: 'core',    contractId: 1, name: 'Core',    rateMin: 1.0, rateMax: 1.5, minUsd: 100,  maxUsd: 999,  duration: 60 },
+  { _id: 'max',     contractId: 2, name: 'Max',     rateMin: 0.5, rateMax: 2.0, minUsd: 1000, maxUsd: null, duration: 90 },
 ];
+const withAvgRate = (pkgs) => pkgs.map(p => ({ ...p, dailyRate: Number(((p.rateMin + p.rateMax) / 2).toFixed(4)) }));
 
 const COINS = [
   { symbol: 'BNB',  label: 'BNB Chain',   color: '#fcd535' },
@@ -189,6 +191,7 @@ export default function AIAgents() {
   const { balance: onChainBal } = useUserBalance(wagmiAddress);
   const contract = useAlphaNodes();
   const [investments, setInvestments] = useState([]);
+  const [packages, setPackages] = useState(withAvgRate(DEFAULT_PACKAGES));
   const [selected, setSelected] = useState(null);
   const [selectedCoin, setSelectedCoin] = useState(COINS[0]);
   const [amount, setAmount] = useState('');
@@ -199,6 +202,20 @@ export default function AIAgents() {
   const [successTx, setSuccessTx] = useState(null);
 
   useEffect(() => { if (address) fetchInvestments(); }, [address]);
+
+  useEffect(() => {
+    getAiPackages()
+      .then(r => {
+        const live = r.data?.data;
+        if (!Array.isArray(live) || !live.length) return;
+        const merged = DEFAULT_PACKAGES.map(def => {
+          const l = live.find(p => p._id === def._id);
+          return l ? { ...def, rateMin: l.rateMin, rateMax: l.rateMax } : def;
+        });
+        setPackages(withAvgRate(merged));
+      })
+      .catch(() => {}); // keep hardcoded defaults on failure
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 1000);
@@ -328,7 +345,7 @@ export default function AIAgents() {
 
       {/* Packages */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-        {PACKAGES.map((pkg, idx) => {
+        {packages.map((pkg, idx) => {
           const colors = ['#fcd535', '#00c076', '#818cf8'];
           const color = colors[idx];
           return (
@@ -373,12 +390,12 @@ export default function AIAgents() {
 
                 {/* Right: rate + total + arrow */}
                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1 }}>
-                    {pkg.dailyRate}%
+                  <div style={{ fontSize: 18, fontWeight: 900, color, lineHeight: 1 }}>
+                    {pkg.rateMin}–{pkg.rateMax}%
                     <span style={{ fontSize: 11, fontWeight: 400, color: '#555' }}>/day</span>
                   </div>
                   <div style={{ fontSize: 10, color: '#555' }}>
-                    <span style={{ color: '#00c076', fontWeight: 700 }}>{(pkg.dailyRate * pkg.duration).toFixed(0)}%</span> total
+                    <span style={{ color: '#00c076', fontWeight: 700 }}>~{(pkg.dailyRate * pkg.duration).toFixed(0)}%</span> avg total
                   </div>
                   <div style={{
                     fontSize: 10, fontWeight: 800, color,
@@ -428,7 +445,7 @@ export default function AIAgents() {
                   {ICONS[selected._id]} {selected.name}
                 </div>
                 <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
-                  {selected.dailyRate}%/day · {selected.duration}d · {(selected.dailyRate * selected.duration).toFixed(0)}% total
+                  {selected.rateMin}–{selected.rateMax}%/day · {selected.duration}d · ~{(selected.dailyRate * selected.duration).toFixed(0)}% avg total
                 </div>
               </div>
               <button
@@ -506,14 +523,14 @@ export default function AIAgents() {
                     padding: '10px 12px', borderRadius: 10,
                     background: 'rgba(0,192,118,0.06)', border: '1px solid rgba(0,192,118,0.12)',
                   }}>
-                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Daily</div>
+                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Daily (avg)</div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: '#00c076' }}>+${dailyEst}</div>
                   </div>
                   <div style={{
                     padding: '10px 12px', borderRadius: 10,
                     background: 'rgba(252,213,53,0.06)', border: '1px solid rgba(252,213,53,0.12)',
                   }}>
-                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Total ({selected.duration}d)</div>
+                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Total ({selected.duration}d, avg)</div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: '#fcd535' }}>+${totalEst}</div>
                   </div>
                 </div>

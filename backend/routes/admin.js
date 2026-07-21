@@ -6,6 +6,7 @@ const Transaction = require('../models/Transaction');
 const AiInvestment = require('../models/AiInvestment');
 const Setting = require('../models/Setting');
 const Trader = require('../models/Trader');
+const { AI_PACKAGES } = require('../config/aiPackages');
 
 let contractService = null;
 function getContractService() {
@@ -503,6 +504,54 @@ router.delete('/traders/:id', auth, async (req, res) => {
   try {
     await Trader.findByIdAndDelete(req.params.id);
     res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/ai-rates?password=
+router.get('/ai-rates', auth, async (req, res) => {
+  try {
+    const setting = await Setting.findOne({ key: 'aiPackageRates' });
+    const overrides = setting?.value || {};
+    const rates = {};
+    AI_PACKAGES.forEach(p => {
+      rates[p._id] = {
+        name: p.name,
+        min: overrides[p._id]?.min ?? p.rateMin,
+        max: overrides[p._id]?.max ?? p.rateMax,
+      };
+    });
+    res.json({ success: true, data: rates });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/ai-rates?password= — body: { rates: { 'alpha-x': {min,max}, core: {...}, max: {...} } }
+router.post('/ai-rates', auth, async (req, res) => {
+  try {
+    const { rates } = req.body;
+    if (!rates || typeof rates !== 'object') {
+      return res.json({ success: false, error: 'rates object required' });
+    }
+    const cleaned = {};
+    for (const p of AI_PACKAGES) {
+      const r = rates[p._id];
+      if (!r) continue;
+      const min = Number(r.min);
+      const max = Number(r.max);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < min || max > 20) {
+        return res.json({ success: false, error: `Invalid rate range for ${p.name}` });
+      }
+      cleaned[p._id] = { min, max };
+    }
+    await Setting.findOneAndUpdate(
+      { key: 'aiPackageRates' },
+      { value: cleaned },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, data: cleaned });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

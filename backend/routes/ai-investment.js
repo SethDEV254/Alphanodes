@@ -3,16 +3,28 @@ const AiInvestment = require('../models/AiInvestment');
 const Balance = require('../models/Balance');
 const Transaction = require('../models/Transaction');
 const Setting = require('../models/Setting');
+const { AI_PACKAGES } = require('../config/aiPackages');
 
-const AI_PACKAGES = [
-  { _id: 'alpha-x', id: 0, name: 'Alpha X', dailyRate: 1.0, dailyRateBps: 100, minAmount: 0,    maxAmount: 100,   duration: 30, durationDays: 30 },
-  { _id: 'core',    id: 1, name: 'Core',    dailyRate: 1.5, dailyRateBps: 150, minAmount: 100,  maxAmount: 1000,  duration: 60, durationDays: 60 },
-  { _id: 'max',     id: 2, name: 'Max',     dailyRate: 2.0, dailyRateBps: 200, minAmount: 1000, maxAmount: 10000, duration: 90, durationDays: 90 },
-];
+// Merges admin-configured rate overrides (Setting: aiPackageRates) onto the base packages
+async function getPackageRates() {
+  const setting = await Setting.findOne({ key: 'aiPackageRates' });
+  const overrides = setting?.value || {};
+  return AI_PACKAGES.map(p => {
+    const o = overrides[p._id];
+    const rateMin = o?.min != null ? Number(o.min) : p.rateMin;
+    const rateMax = o?.max != null ? Number(o.max) : p.rateMax;
+    return { ...p, rateMin, rateMax, dailyRate: Number(((rateMin + rateMax) / 2).toFixed(4)) };
+  });
+}
 
 // GET /api/ai-investment/packages
-router.get('/packages', (req, res) => {
-  res.json({ success: true, data: AI_PACKAGES });
+router.get('/packages', async (req, res) => {
+  try {
+    const packages = await getPackageRates();
+    res.json({ success: true, data: packages });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 // GET /api/ai-investment?address=
@@ -37,7 +49,8 @@ router.post('/', async (req, res) => {
     }
     if (amount <= 0) return res.json({ success: false, error: 'Amount must be greater than 0' });
 
-    const pkg = AI_PACKAGES.find(p => p._id === packageId || p.id === Number(packageId));
+    const packages = await getPackageRates();
+    const pkg = packages.find(p => p._id === packageId || p.id === Number(packageId));
     if (!pkg) return res.json({ success: false, error: 'Invalid package' });
     if (amount < pkg.minAmount) {
       return res.json({ success: false, error: `Minimum amount is ${pkg.minAmount} BNB` });
@@ -59,13 +72,18 @@ router.post('/', async (req, res) => {
       return res.json({ success: false, error: 'Insufficient trading balance' });
     }
 
+    // Lock in a rate for this investment's lifetime, randomized within the package's band
+    const minBps = Math.round(pkg.rateMin * 100);
+    const maxBps = Math.round(pkg.rateMax * 100);
+    const dailyRateBps = minBps >= maxBps ? minBps : minBps + Math.floor(Math.random() * (maxBps - minBps + 1));
+
     const endDate = new Date(Date.now() + pkg.durationDays * 24 * 60 * 60 * 1000);
     const investment = await AiInvestment.create({
       address: addr,
       packageId: pkg.id,
       packageName: pkg.name,
       amount,
-      dailyRateBps: pkg.dailyRateBps,
+      dailyRateBps,
       durationDays: pkg.durationDays,
       endDate,
       coin: coin || 'BNB',
