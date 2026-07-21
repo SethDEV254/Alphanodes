@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && npm ci && npm run build",
+  "buildCommand": "cd backend && npm ci && cd ../frontend && npm ci && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": null,
   "routes": [
