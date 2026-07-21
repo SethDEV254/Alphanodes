@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
-import { getTransactions, compound, getAiInvestments, requestWithdrawal, getWithdrawalStatus } from '../api.js';
+import { getTransactions, compound, getAiInvestments, requestWithdrawal, getWithdrawalStatus, deposit as syncDeposit } from '../api.js';
 import { useAlphaNodes, useUserBalance, useUserWithdrawals, fetchOnChainBalance } from '../hooks/useContract.js';
 import { CONTRACT_ADDRESS } from '../config.js';
 import { TxSuccess } from '../components/TxSuccess.jsx';
@@ -218,6 +218,12 @@ export default function Dashboard() {
       // Immediately read on-chain balance and push to global context
       const fresh = await fetchOnChainBalance(wagmiAddress, CONTRACT_ADDRESS);
       if (fresh) { setLocalLiveBalance(fresh); setLiveBalance(fresh); }
+
+      // Credit the DB trading balance (backend verifies this tx on-chain before crediting)
+      try {
+        await syncDeposit({ address, txHash: depositHash });
+      } catch (e) {}
+
       setDepositAmt('');
       setShowFundsModal(false);
       setMsg('');
@@ -230,11 +236,7 @@ export default function Dashboard() {
       await refreshAll();
       fetchTxs();
       refetchOnChain();
-      // Retry backend poll every 1s for 10s until DB catches up with the event
-      for (let i = 0; i < 10; i++) {
-        await new Promise(r => setTimeout(r, 1000));
-        refreshBalance();
-      }
+      refreshBalance();
     } catch (e) {
       showMsg(e.shortMessage || e.message || 'Transaction failed', true);
     } finally {

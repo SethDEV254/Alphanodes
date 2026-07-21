@@ -12,4 +12,10 @@ const transactionSchema = new mongoose.Schema({
   description: { type: String, default: '' },
 }, { timestamps: true });
 
+// Prevents double-crediting the same on-chain deposit if sync is retried/raced
+transactionSchema.index(
+  { txHash: 1 },
+  { unique: true, partialFilterExpression: { type: 'deposit', txHash: { $ne: '' } } }
+);
+
 module.exports = mongoose.model('Transaction', transactionSchema);
