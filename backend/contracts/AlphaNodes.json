@@ -1,15 +1,36 @@
 [
   {
-    "inputs": [{ "internalType": "address", "name": "_treasury", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_treasury",
+        "type": "address"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "investmentId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "investmentId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
     "name": "AIEarningsClaimed",
     "type": "event"
@@ -17,10 +38,30 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "investmentId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "packageId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "investmentId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "packageId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
     "name": "AIInvested",
     "type": "event"
@@ -28,8 +69,43 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "batchId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "recipientCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "BatchPayout",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
     "name": "Deposited",
     "type": "event"
@@ -37,9 +113,24 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "stakeId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "returned", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "stakeId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "returned",
+        "type": "uint256"
+      }
     ],
     "name": "EarlyUnlocked",
     "type": "event"
@@ -47,25 +138,124 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "uint256", "name": "packageId", "type": "uint256" },
-      { "indexed": false, "internalType": "string", "name": "name", "type": "string" },
-      { "indexed": false, "internalType": "uint256", "name": "dailyRateBps", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "packageId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "dailyRateBps",
+        "type": "uint256"
+      }
     ],
     "name": "PackageAdded",
     "type": "event"
   },
   {
     "anonymous": false,
-    "inputs": [{ "indexed": false, "internalType": "bool", "name": "status", "type": "bool" }],
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "status",
+        "type": "bool"
+      }
+    ],
     "name": "Paused",
     "type": "event"
   },
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "referrer", "type": "address" },
-      { "indexed": true, "internalType": "address", "name": "referee", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "batchId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "success",
+        "type": "bool"
+      }
+    ],
+    "name": "PayoutSent",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "seth",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "star",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "partnership",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "marketing",
+        "type": "address"
+      }
+    ],
+    "name": "PayoutWalletsUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "referrer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "referee",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
     "name": "ReferralPaid",
     "type": "event"
@@ -73,8 +263,18 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "address", "name": "referrer", "type": "address" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "referrer",
+        "type": "address"
+      }
     ],
     "name": "Registered",
     "type": "event"
@@ -82,10 +282,30 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "stakeId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "durationDays", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "stakeId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "durationDays",
+        "type": "uint256"
+      }
     ],
     "name": "Staked",
     "type": "event"
@@ -93,26 +313,68 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "stakeId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "principal", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "earnings", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "stakeId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "principal",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "earnings",
+        "type": "uint256"
+      }
     ],
     "name": "Unstaked",
     "type": "event"
   },
   {
     "anonymous": false,
-    "inputs": [{ "indexed": true, "internalType": "uint256", "name": "withdrawalId", "type": "uint256" }],
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "withdrawalId",
+        "type": "uint256"
+      }
+    ],
     "name": "WithdrawalApproved",
     "type": "event"
   },
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "withdrawalId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "withdrawalId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
     "name": "WithdrawalClaimed",
     "type": "event"
@@ -120,9 +382,24 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "withdrawalId", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "withdrawalId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
     "name": "WithdrawalRequested",
     "type": "event"
@@ -130,37 +407,116 @@
   {
     "inputs": [],
     "name": "EARLY_UNLOCK_PENALTY",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MARKETING_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "MAX_LEVERAGE",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "REFERRAL_RATE",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "name": "PARTNERSHIP_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "SETH_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "STAR_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "WITHDRAW_LIMIT_MULT",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "name", "type": "string" },
-      { "internalType": "uint256", "name": "dailyRateBps", "type": "uint256" },
-      { "internalType": "uint256", "name": "minAmount", "type": "uint256" },
-      { "internalType": "uint256", "name": "durationDays", "type": "uint256" }
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "dailyRateBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "durationDays",
+        "type": "uint256"
+      }
     ],
     "name": "addPackage",
     "outputs": [],
@@ -170,41 +526,130 @@
   {
     "inputs": [],
     "name": "aiInvestmentCount",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "name": "aiInvestments",
     "outputs": [
-      { "internalType": "address", "name": "user", "type": "address" },
-      { "internalType": "uint256", "name": "packageId", "type": "uint256" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" },
-      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
-      { "internalType": "uint256", "name": "endTime", "type": "uint256" },
-      { "internalType": "uint256", "name": "claimedEarnings", "type": "uint256" },
-      { "internalType": "bool", "name": "active", "type": "bool" }
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "withdrawalId", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "aiInvestments",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "packageId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "claimedEarnings",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "withdrawalId",
+        "type": "uint256"
+      }
+    ],
     "name": "approveWithdrawal",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "investmentId", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "recipients",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "amounts",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "batchPayout",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "batchPayoutCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "investmentId",
+        "type": "uint256"
+      }
+    ],
     "name": "claimAIEarnings",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "withdrawalId", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "withdrawalId",
+        "type": "uint256"
+      }
+    ],
     "name": "claimWithdrawal",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -213,7 +658,13 @@
   {
     "inputs": [],
     "name": "contractBalance",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
@@ -225,7 +676,13 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "stakeId", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "stakeId",
+        "type": "uint256"
+      }
+    ],
     "name": "earlyUnlock",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -251,11 +708,31 @@
     "outputs": [
       {
         "components": [
-          { "internalType": "string", "name": "name", "type": "string" },
-          { "internalType": "uint256", "name": "dailyRateBps", "type": "uint256" },
-          { "internalType": "uint256", "name": "minAmount", "type": "uint256" },
-          { "internalType": "uint256", "name": "durationDays", "type": "uint256" },
-          { "internalType": "bool", "name": "active", "type": "bool" }
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "dailyRateBps",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "durationDays",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
         ],
         "internalType": "struct AlphaNodes.AIPackage[]",
         "name": "",
@@ -266,18 +743,52 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "addr", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "addr",
+        "type": "address"
+      }
+    ],
     "name": "getUser",
     "outputs": [
       {
         "components": [
-          { "internalType": "bool", "name": "exists", "type": "bool" },
-          { "internalType": "address", "name": "referrer", "type": "address" },
-          { "internalType": "uint256", "name": "totalDeposited", "type": "uint256" },
-          { "internalType": "uint256", "name": "totalWithdrawn", "type": "uint256" },
-          { "internalType": "uint256", "name": "tradingBalance", "type": "uint256" },
-          { "internalType": "uint256", "name": "aiEarnings", "type": "uint256" },
-          { "internalType": "uint256", "name": "referralEarnings", "type": "uint256" }
+          {
+            "internalType": "bool",
+            "name": "exists",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "referrer",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalDeposited",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalWithdrawn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tradingBalance",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "aiEarnings",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "referralEarnings",
+            "type": "uint256"
+          }
         ],
         "internalType": "struct AlphaNodes.User",
         "name": "",
@@ -288,28 +799,70 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "addr", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "addr",
+        "type": "address"
+      }
+    ],
     "name": "getUserAIInvestments",
-    "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }],
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "addr", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "addr",
+        "type": "address"
+      }
+    ],
     "name": "getUserStakes",
-    "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }],
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "addr", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "addr",
+        "type": "address"
+      }
+    ],
     "name": "getUserWithdrawals",
-    "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }],
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "packageId", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "packageId",
+        "type": "uint256"
+      }
+    ],
     "name": "invest",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -317,8 +870,16 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "packageId", "type": "uint256" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      {
+        "internalType": "uint256",
+        "name": "packageId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
     "name": "investBalance",
     "outputs": [],
@@ -327,20 +888,78 @@
   },
   {
     "inputs": [],
-    "name": "owner",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "marketingWallet",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "name": "packages",
     "outputs": [
-      { "internalType": "string", "name": "name", "type": "string" },
-      { "internalType": "uint256", "name": "dailyRateBps", "type": "uint256" },
-      { "internalType": "uint256", "name": "minAmount", "type": "uint256" },
-      { "internalType": "uint256", "name": "durationDays", "type": "uint256" },
-      { "internalType": "bool", "name": "active", "type": "bool" }
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "dailyRateBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "durationDays",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "partnershipWallet",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -348,19 +967,37 @@
   {
     "inputs": [],
     "name": "paused",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "referrer", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "referrer",
+        "type": "address"
+      }
+    ],
     "name": "register",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
     "name": "requestWithdrawal",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -368,8 +1005,16 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "packageId", "type": "uint256" },
-      { "internalType": "bool", "name": "active", "type": "bool" }
+      {
+        "internalType": "uint256",
+        "name": "packageId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
     ],
     "name": "setPackageActive",
     "outputs": [],
@@ -377,23 +1022,84 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "bool", "name": "_paused", "type": "bool" }],
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "_paused",
+        "type": "bool"
+      }
+    ],
     "name": "setPaused",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "_treasury", "type": "address" }],
-    "name": "setTreasury",
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_seth",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_star",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_partnership",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_marketing",
+        "type": "address"
+      }
+    ],
+    "name": "setPayoutWallets",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "amount", "type": "uint256" },
-      { "internalType": "uint256", "name": "duration", "type": "uint256" }
+      {
+        "internalType": "address",
+        "name": "_treasury",
+        "type": "address"
+      }
+    ],
+    "name": "setTreasury",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sethWallet",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "duration",
+        "type": "uint256"
+      }
     ],
     "name": "stake",
     "outputs": [],
@@ -403,22 +1109,79 @@
   {
     "inputs": [],
     "name": "stakeCount",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "name": "stakes",
     "outputs": [
-      { "internalType": "address", "name": "user", "type": "address" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" },
-      { "internalType": "uint256", "name": "dailyRateBps", "type": "uint256" },
-      { "internalType": "uint256", "name": "startTime", "type": "uint256" },
-      { "internalType": "uint256", "name": "endTime", "type": "uint256" },
-      { "internalType": "uint256", "name": "claimedEarnings", "type": "uint256" },
-      { "internalType": "bool", "name": "active", "type": "bool" },
-      { "internalType": "bool", "name": "earlyUnlocked", "type": "bool" }
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "dailyRateBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "claimedEarnings",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "earlyUnlocked",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "starWallet",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -426,12 +1189,24 @@
   {
     "inputs": [],
     "name": "totalUsers",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
     "name": "transferOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -440,12 +1215,24 @@
   {
     "inputs": [],
     "name": "treasury",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "stakeId", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "stakeId",
+        "type": "uint256"
+      }
+    ],
     "name": "unstake",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -453,52 +1240,140 @@
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "uint256", "name": "", "type": "uint256" }
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
     "name": "userAIInvestments",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "name": "userList",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "uint256", "name": "", "type": "uint256" }
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "userList",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
     "name": "userStakes",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "uint256", "name": "", "type": "uint256" }
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
     "name": "userWithdrawals",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "name": "users",
     "outputs": [
-      { "internalType": "bool", "name": "exists", "type": "bool" },
-      { "internalType": "address", "name": "referrer", "type": "address" },
-      { "internalType": "uint256", "name": "totalDeposited", "type": "uint256" },
-      { "internalType": "uint256", "name": "totalWithdrawn", "type": "uint256" },
-      { "internalType": "uint256", "name": "tradingBalance", "type": "uint256" },
-      { "internalType": "uint256", "name": "aiEarnings", "type": "uint256" },
-      { "internalType": "uint256", "name": "referralEarnings", "type": "uint256" }
+      {
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "referrer",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalDeposited",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalWithdrawn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tradingBalance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "aiEarnings",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "referralEarnings",
+        "type": "uint256"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -506,23 +1381,62 @@
   {
     "inputs": [],
     "name": "withdrawalCount",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "name": "withdrawals",
     "outputs": [
-      { "internalType": "address", "name": "user", "type": "address" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" },
-      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-      { "internalType": "bool", "name": "approved", "type": "bool" },
-      { "internalType": "bool", "name": "rejected", "type": "bool" },
-      { "internalType": "bool", "name": "claimed", "type": "bool" }
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
   },
-  { "stateMutability": "payable", "type": "receive" }
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdrawals",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "rejected",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "claimed",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
+  }
 ]
