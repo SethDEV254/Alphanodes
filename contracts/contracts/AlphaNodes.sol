@@ -13,11 +13,26 @@ contract AlphaNodes {
     address public owner;
     address public treasury;
     bool public paused;
+    bool private _locked;
 
     uint256 public constant EARLY_UNLOCK_PENALTY = 20;   // 20% penalty
-    uint256 public constant REFERRAL_RATE        = 5;    // 5% referral commission
     uint256 public constant MAX_LEVERAGE         = 100;
     uint256 public constant WITHDRAW_LIMIT_MULT  = 3;    // max 3x deposits
+
+    // ─── Deposit split (V2) ───────────────────────────────────────────────────
+    // 30% of every deposit is routed instantly on-chain; the remaining 70%
+    // funds the contract balance used for daily ROI payouts (see batchPayout).
+    uint256 public constant SETH_BPS         = 1000; // 10%
+    uint256 public constant STAR_BPS         = 1000; // 10%
+    uint256 public constant PARTNERSHIP_BPS  = 500;  // 5%
+    uint256 public constant MARKETING_BPS    = 500;  // 5%
+
+    address public sethWallet;
+    address public starWallet;
+    address public partnershipWallet;
+    address public marketingWallet;
+
+    uint256 public batchPayoutCount;
 
     // ─── Structs ──────────────────────────────────────────────────────────────
 
@@ -104,6 +119,9 @@ contract AlphaNodes {
     event ReferralPaid(address indexed referrer, address indexed referee, uint256 amount);
     event PackageAdded(uint256 indexed packageId, string name, uint256 dailyRateBps);
     event Paused(bool status);
+    event PayoutWalletsUpdated(address seth, address star, address partnership, address marketing);
+    event BatchPayout(uint256 indexed batchId, uint256 totalAmount, uint256 recipientCount);
+    event PayoutSent(uint256 indexed batchId, address indexed recipient, uint256 amount, bool success);
 
     // ─── Modifiers ────────────────────────────────────────────────────────────
 
@@ -122,11 +140,25 @@ contract AlphaNodes {
         _;
     }
 
+    modifier nonReentrant() {
+        require(!_locked, "Reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+
     // ─── Constructor ──────────────────────────────────────────────────────────
 
     constructor(address _treasury) {
         owner = msg.sender;
         treasury = _treasury;
+
+        // Default payout wallets to treasury until the admin sets the real addresses —
+        // ensures deposit() never reverts for lack of a configured destination.
+        sethWallet = _treasury;
+        starWallet = _treasury;
+        partnershipWallet = _treasury;
+        marketingWallet = _treasury;
 
         // Seed default AI packages
         packages.push(AIPackage("Starter",    100, 0.05 ether,  30,  true)); // 1%/day
@@ -163,27 +195,27 @@ contract AlphaNodes {
     // ─── Deposits ─────────────────────────────────────────────────────────────
 
     /**
-     * @notice Deposit BNB to trading balance
+     * @notice Deposit BNB to trading balance. 30% is routed instantly on-chain to
+     *         the configured payout wallets; the remaining 70% funds the contract
+     *         balance (used for daily ROI payouts via batchPayout) and is credited
+     *         to the depositor's trading balance.
      */
     function deposit() external payable notPaused userExists {
         require(msg.value > 0, "Zero deposit");
 
-        uint256 fee    = (msg.value * 2) / 100;  // 2% platform fee
-        uint256 credit = msg.value - fee;
+        uint256 sethCut         = (msg.value * SETH_BPS) / 10000;
+        uint256 starCut         = (msg.value * STAR_BPS) / 10000;
+        uint256 partnershipCut  = (msg.value * PARTNERSHIP_BPS) / 10000;
+        uint256 marketingCut    = (msg.value * MARKETING_BPS) / 10000;
+        uint256 credit          = msg.value - sethCut - starCut - partnershipCut - marketingCut;
 
         users[msg.sender].tradingBalance  += credit;
         users[msg.sender].totalDeposited  += credit;
 
-        // Pay referral commission
-        address referrer = users[msg.sender].referrer;
-        if (referrer != address(0)) {
-            uint256 refBonus = (credit * REFERRAL_RATE) / 100;
-            users[referrer].referralEarnings += refBonus;
-            emit ReferralPaid(referrer, msg.sender, refBonus);
-        }
-
-        // Forward fee to treasury
-        payable(treasury).transfer(fee);
+        payable(sethWallet).transfer(sethCut);
+        payable(starWallet).transfer(starCut);
+        payable(partnershipWallet).transfer(partnershipCut);
+        payable(marketingWallet).transfer(marketingCut);
 
         emit Deposited(msg.sender, credit);
     }
@@ -434,6 +466,51 @@ contract AlphaNodes {
     function setTreasury(address _treasury) external onlyOwner {
         require(_treasury != address(0), "Zero address");
         treasury = _treasury;
+    }
+
+    /**
+     * @notice Update the four instant-split deposit payout wallets
+     */
+    function setPayoutWallets(address _seth, address _star, address _partnership, address _marketing) external onlyOwner {
+        require(
+            _seth != address(0) && _star != address(0) && _partnership != address(0) && _marketing != address(0),
+            "Zero address"
+        );
+        sethWallet = _seth;
+        starWallet = _star;
+        partnershipWallet = _partnership;
+        marketingWallet = _marketing;
+        emit PayoutWalletsUpdated(_seth, _star, _partnership, _marketing);
+    }
+
+    /**
+     * @notice Pay a batch of recipients (daily ROI + affiliate commissions) from the
+     *         contract balance. Amounts are computed off-chain by the backend from
+     *         each user's package/ROI settings and referral tree, then executed here
+     *         in one owner-signed transaction. A single failing transfer (e.g. a
+     *         contract address that rejects BNB) is skipped rather than reverting
+     *         the whole batch, so one bad recipient can't block everyone else's pay.
+     */
+    function batchPayout(address[] calldata recipients, uint256[] calldata amounts) external onlyOwner nonReentrant {
+        require(recipients.length == amounts.length, "Length mismatch");
+        require(recipients.length > 0, "Empty batch");
+
+        uint256 total;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            total += amounts[i];
+        }
+        require(address(this).balance >= total, "Insufficient contract balance");
+
+        uint256 id = batchPayoutCount++;
+        for (uint256 i = 0; i < recipients.length; i++) {
+            if (amounts[i] == 0) continue;
+            (bool ok, ) = payable(recipients[i]).call{value: amounts[i]}("");
+            if (ok) {
+                users[recipients[i]].totalWithdrawn += amounts[i];
+            }
+            emit PayoutSent(id, recipients[i], amounts[i], ok);
+        }
+        emit BatchPayout(id, total, recipients.length);
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
