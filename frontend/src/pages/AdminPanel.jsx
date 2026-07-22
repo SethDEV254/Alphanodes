@@ -412,7 +412,7 @@ function ContractTab({ password, showMsg }) {
     finally { setLoading(''); }
   };
 
-  const CONTRACT_ADDR = info?.address || '0x5354237Ff7AF8387aB72D5C0De1AabEf33ff63C5';
+  const CONTRACT_ADDR = info?.address || '0xe69dA690A090A2226fDD249b1d786414CcEfE1dA';
 
   return (
     <div style={{ padding:'28px 32px',maxWidth:680 }}>
