@@ -28,8 +28,8 @@ const ICONS = { core: '◎', max: '⬡' };
 
 // Hardcoded defaults — overridden at runtime by admin-configured rates from /api/ai-investment/packages
 const DEFAULT_PACKAGES = [
-  { _id: 'core', contractId: 1, name: 'Core', rateMin: 1.0, rateMax: 1.5, minUsd: 100,  maxUsd: 999,  duration: 60 },
-  { _id: 'max',  contractId: 2, name: 'Max',  rateMin: 0.5, rateMax: 2.0, minUsd: 1000, maxUsd: null, duration: 90 },
+  { _id: 'core', contractId: 1, name: 'Core', rateMin: 0.5, rateMax: 1.0, minUsd: 100,  maxUsd: 999,  duration: 60 },
+  { _id: 'max',  contractId: 2, name: 'Max',  rateMin: 1.0, rateMax: 1.5, minUsd: 1000, maxUsd: null, duration: 90 },
 ];
 const withAvgRate = (pkgs) => pkgs.map(p => ({ ...p, dailyRate: Number(((p.rateMin + p.rateMax) / 2).toFixed(4)) }));
 
@@ -393,9 +393,6 @@ export default function AIAgents() {
                     {pkg.rateMin}–{pkg.rateMax}%
                     <span style={{ fontSize: 11, fontWeight: 400, color: '#555' }}>/day</span>
                   </div>
-                  <div style={{ fontSize: 10, color: '#555' }}>
-                    <span style={{ color: '#00c076', fontWeight: 700 }}>~{(pkg.dailyRate * pkg.duration).toFixed(0)}%</span> avg total
-                  </div>
                   <div style={{
                     fontSize: 10, fontWeight: 800, color,
                     display: 'flex', alignItems: 'center', gap: 3,
@@ -444,7 +441,7 @@ export default function AIAgents() {
                   {ICONS[selected._id]} {selected.name}
                 </div>
                 <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
-                  {selected.rateMin}–{selected.rateMax}%/day · {selected.duration}d · ~{(selected.dailyRate * selected.duration).toFixed(0)}% avg total
+                  {selected.rateMin}–{selected.rateMax}%/day · {selected.duration}d
                 </div>
               </div>
               <button
