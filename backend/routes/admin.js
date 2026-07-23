@@ -6,7 +6,9 @@ const Transaction = require('../models/Transaction');
 const AiInvestment = require('../models/AiInvestment');
 const Setting = require('../models/Setting');
 const Trader = require('../models/Trader');
+const PayoutBatch = require('../models/PayoutBatch');
 const { AI_PACKAGES } = require('../config/aiPackages');
+const { computeDailyPayouts, AFFILIATE_RATES } = require('../services/payout');
 
 let contractService = null;
 function getContractService() {
@@ -552,6 +554,130 @@ router.post('/ai-rates', auth, async (req, res) => {
       { upsert: true, new: true }
     );
     res.json({ success: true, data: cleaned });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+async function getContractBnbBalance() {
+  if (!process.env.CONTRACT_ADDRESS || !process.env.BSC_RPC) return null;
+  try {
+    const rpcRes = await fetch(process.env.BSC_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getBalance', params: [process.env.CONTRACT_ADDRESS, 'latest'], id: 1 }),
+    });
+    const json = await rpcRes.json();
+    return json.result ? parseInt(json.result, 16) / 1e18 : null;
+  } catch {
+    return null;
+  }
+}
+
+// GET /api/admin/payouts/preview?password= — what everyone is currently owed, no state change
+router.get('/payouts/preview', auth, async (req, res) => {
+  try {
+    const [preview, contractBalance] = await Promise.all([computeDailyPayouts(), getContractBnbBalance()]);
+    res.json({
+      success: true,
+      data: {
+        recipients: preview.recipients,
+        breakdown: preview.breakdown,
+        totalAmount: preview.totalAmount,
+        contractBalance,
+        sufficientBalance: contractBalance == null ? null : contractBalance >= preview.totalAmount,
+        affiliateRates: AFFILIATE_RATES,
+      },
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/payouts/execute?password= — sends the real on-chain batch payout
+router.post('/payouts/execute', auth, async (req, res) => {
+  try {
+    const preview = await computeDailyPayouts();
+    if (!preview.recipients.length) {
+      return res.json({ success: false, error: 'Nothing pending to pay out' });
+    }
+
+    const contractBalance = await getContractBnbBalance();
+    if (contractBalance != null && contractBalance < preview.totalAmount) {
+      return res.json({
+        success: false,
+        error: `Contract balance (${contractBalance.toFixed(6)} BNB) is below what's owed (${preview.totalAmount.toFixed(6)} BNB)`,
+      });
+    }
+
+    const svc = getContractService();
+    if (!svc) return res.json({ success: false, error: 'Contract service not configured (missing CONTRACT_ADDRESS or OWNER_PRIVATE_KEY)' });
+
+    let txHash;
+    try {
+      txHash = await svc.batchPayout(
+        preview.recipients.map((r) => r.address),
+        preview.recipients.map((r) => r.amount)
+      );
+    } catch (chainErr) {
+      await PayoutBatch.create({
+        totalAmount: preview.totalAmount,
+        recipientCount: preview.recipients.length,
+        recipients: preview.recipients,
+        investmentIds: preview.investmentPayouts.map((p) => p.investmentId),
+        status: 'failed',
+        error: chainErr.message,
+      });
+      return res.json({ success: false, error: chainErr.message });
+    }
+
+    // Lock in claimedEarnings for exactly what was just paid, so manual claim/compound
+    // (which reads the same field) can never re-pay this same ROI.
+    await Promise.all(
+      preview.investmentPayouts.map((p) =>
+        AiInvestment.findByIdAndUpdate(p.investmentId, { $inc: { claimedEarnings: p.roi } })
+      )
+    );
+
+    // Transaction log entries for the app's activity feed (informational — the real
+    // money movement already happened on-chain, this doesn't touch off-chain balances).
+    await Transaction.insertMany(
+      preview.breakdown.flatMap((d) => {
+        const rows = [{
+          address: d.address, type: 'ai_claim', amount: d.roi, txHash,
+          description: `Daily ${d.packageName} ROI (on-chain)`,
+        }];
+        d.affiliates.forEach((a) => rows.push({
+          address: a.address, type: 'referral', amount: a.commission, txHash,
+          description: `Level ${a.level} affiliate commission from ${d.address} (on-chain)`,
+        }));
+        return rows;
+      })
+    );
+
+    const batch = await PayoutBatch.create({
+      totalAmount: preview.totalAmount,
+      recipientCount: preview.recipients.length,
+      recipients: preview.recipients,
+      investmentIds: preview.investmentPayouts.map((p) => p.investmentId),
+      txHash,
+      status: 'executed',
+    });
+
+    res.json({
+      success: true,
+      data: { txHash, totalAmount: preview.totalAmount, recipientCount: preview.recipients.length, batchId: batch._id },
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/payouts/history?password= — past executed/failed batches
+router.get('/payouts/history', auth, async (req, res) => {
+  try {
+    const batches = await PayoutBatch.find().sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, data: batches });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

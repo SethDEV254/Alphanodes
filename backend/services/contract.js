@@ -48,4 +48,23 @@ async function setTreasury(address) {
   return receipt.hash;
 }
 
-module.exports = { approveWithdrawal, fundContract, setPaused, emergencyWithdraw, setTreasury };
+async function setPayoutWallets(seth, star, partnership, marketing) {
+  const contract = getContract();
+  const tx = await contract.setPayoutWallets(seth, star, partnership, marketing);
+  const receipt = await tx.wait();
+  return receipt.hash;
+}
+
+// recipients: string[] addresses, amounts: number[] in BNB (not wei)
+async function batchPayout(recipients, amounts) {
+  const contract = getContract();
+  const weiAmounts = amounts.map((a) => ethers.parseEther(Number(a).toFixed(18)));
+  const tx = await contract.batchPayout(recipients, weiAmounts);
+  const receipt = await tx.wait();
+  return receipt.hash;
+}
+
+module.exports = {
+  approveWithdrawal, fundContract, setPaused, emergencyWithdraw, setTreasury,
+  setPayoutWallets, batchPayout,
+};

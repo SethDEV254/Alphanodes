@@ -6,6 +6,7 @@ import {
   adminContractInfo, adminFundContract, adminSetPaused, adminEmergencyWithdraw, adminSetTreasury,
   adminGetInvestments, adminManageInvestment, adminGetStakes, adminGetPlatform, adminSetPlatform,
   adminGetAiRates, adminSetAiRates,
+  adminPreviewPayouts, adminExecutePayouts, adminPayoutHistory,
 } from '../api.js';
 
 const fmt = (n) => Number(n || 0).toFixed(2);
@@ -23,6 +24,7 @@ const SIDEBAR = {
     { id: 'traders', label: 'Traders', icon: '◈' },
     { id: 'investments', label: 'AI Investments', icon: '◆' },
     { id: 'ai-rates', label: 'AI Rates', icon: '◈' },
+    { id: 'payouts', label: 'Daily Payouts', icon: '⇄' },
     { id: 'stakes', label: 'Stakes', icon: '⊟' },
     { id: 'copytrades', label: 'Copy Trades', icon: '⊡' },
     { id: 'withdrawals', label: 'Withdrawals', icon: '⊠' },
@@ -776,6 +778,166 @@ function AiRatesTab({ password, showMsg }) {
   );
 }
 
+function PayoutsTab({ password, showMsg }) {
+  const [preview, setPreview] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [loading, setLoading] = useState('');
+
+  useEffect(() => { fetchPreview(); fetchHistory(); }, []);
+
+  const fetchPreview = async () => {
+    setLoading('preview');
+    try {
+      const r = await adminPreviewPayouts(password);
+      if (r.data.success) setPreview(r.data.data);
+      else showMsg(r.data.error || 'Failed to load preview', true);
+    } catch { showMsg('Request failed', true); }
+    finally { setLoading(''); }
+  };
+
+  const fetchHistory = async () => {
+    try { const r = await adminPayoutHistory(password); setHistory(r.data.data || []); } catch {}
+  };
+
+  const handleExecute = async () => {
+    if (!preview?.recipients?.length) return;
+    if (!window.confirm(
+      `Send ${preview.totalAmount.toFixed(6)} BNB to ${preview.recipients.length} wallet(s) right now? This is a real, irreversible on-chain transaction.`
+    )) return;
+    setLoading('execute');
+    try {
+      const r = await adminExecutePayouts(password);
+      if (r.data.success) {
+        showMsg(`Paid ${r.data.data.totalAmount.toFixed(6)} BNB to ${r.data.data.recipientCount} wallet(s)`);
+        fetchPreview();
+        fetchHistory();
+      } else {
+        showMsg(r.data.error || 'Execute failed', true);
+      }
+    } catch { showMsg('Request failed', true); }
+    finally { setLoading(''); }
+  };
+
+  const card = { background: 'rgba(12,14,20,0.95)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', padding: 24, marginBottom: 16 };
+
+  if (!preview) return <div style={{ padding: '28px 32px', color: '#556' }}>Loading...</div>;
+
+  const insufficient = preview.sufficientBalance === false;
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 900 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Daily Payouts</div>
+        <button onClick={fetchPreview} disabled={loading === 'preview'} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#889', fontSize: 12, cursor: 'pointer' }}>
+          {loading === 'preview' ? 'Refreshing...' : '↺ Refresh'}
+        </button>
+      </div>
+      <div style={{ fontSize: 12, color: '#445', marginBottom: 24 }}>
+        AI ROI + 3-tier affiliate commissions ({preview.affiliateRates.map(r => `${r * 100}%`).join(' / ')}), sent as real on-chain BNB.
+      </div>
+
+      {/* Summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div style={{ ...card, padding: '18px 20px', marginBottom: 0 }}>
+          <div style={{ fontSize: 10, color: '#556', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Owed Now</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#fcd535' }}>{preview.totalAmount.toFixed(6)} BNB</div>
+          <div style={{ fontSize: 11, color: '#445', marginTop: 2 }}>{preview.recipients.length} wallet(s)</div>
+        </div>
+        <div style={{ ...card, padding: '18px 20px', marginBottom: 0 }}>
+          <div style={{ fontSize: 10, color: '#556', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Contract Balance</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#3b9eff' }}>{preview.contractBalance != null ? preview.contractBalance.toFixed(6) : '—'} BNB</div>
+        </div>
+        <div style={{ ...card, padding: '18px 20px', marginBottom: 0, border: `1px solid ${insufficient ? 'rgba(255,77,77,0.3)' : 'rgba(0,192,118,0.2)'}` }}>
+          <div style={{ fontSize: 10, color: '#556', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Status</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: insufficient ? '#ff4d4d' : '#00c076' }}>
+            {preview.sufficientBalance == null ? 'Unknown' : insufficient ? 'Insufficient Balance' : 'Ready'}
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={handleExecute}
+        disabled={loading === 'execute' || !preview.recipients.length || insufficient}
+        style={{
+          width: '100%', padding: '14px 0', borderRadius: 12, fontSize: 14, fontWeight: 800, marginBottom: 20,
+          background: (!preview.recipients.length || insufficient) ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg,#fcd535,#f59e0b)',
+          color: (!preview.recipients.length || insufficient) ? '#556' : '#0d0d0d',
+          border: 'none', cursor: (!preview.recipients.length || insufficient) ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {loading === 'execute' ? 'Sending on-chain...' : !preview.recipients.length ? 'Nothing pending' : insufficient ? 'Fund the contract first' : `Execute Payout — ${preview.totalAmount.toFixed(6)} BNB`}
+      </button>
+
+      {/* Recipients */}
+      <div style={{ ...card }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>Recipients</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              {['Address', 'Amount (BNB)'].map(h => (
+                <th key={h} style={{ padding: '8px 0', textAlign: 'left', color: '#445', fontWeight: 700, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {preview.recipients.map(r => (
+              <tr key={r.address} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                <td style={{ padding: '8px 0', color: '#889', fontFamily: 'monospace' }}>{r.address.slice(0, 8)}...{r.address.slice(-4)}</td>
+                <td style={{ padding: '8px 0', color: '#fcd535', fontWeight: 700 }}>{r.amount.toFixed(8)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!preview.recipients.length && <div style={{ padding: 16, color: '#445', fontSize: 12, textAlign: 'center' }}>Nothing pending right now</div>}
+
+        <button onClick={() => setShowBreakdown(v => !v)} style={{ marginTop: 14, fontSize: 11, background: 'none', border: 'none', color: '#3b9eff', cursor: 'pointer', padding: 0 }}>
+          {showBreakdown ? 'Hide' : 'Show'} per-investment breakdown
+        </button>
+
+        {showBreakdown && (
+          <div style={{ marginTop: 12 }}>
+            {preview.breakdown.map(d => (
+              <div key={d.investmentId} style={{ padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: 11 }}>
+                <div style={{ color: '#889' }}>
+                  <span style={{ fontFamily: 'monospace' }}>{d.address.slice(0, 8)}...{d.address.slice(-4)}</span>
+                  {' — '}{d.packageName} — ROI <span style={{ color: '#00c076', fontWeight: 700 }}>{d.roi.toFixed(8)} BNB</span>
+                </div>
+                {d.affiliates.map(a => (
+                  <div key={a.level} style={{ paddingLeft: 16, color: '#556', marginTop: 3 }}>
+                    ↳ Level {a.level} → <span style={{ fontFamily: 'monospace' }}>{a.address.slice(0, 8)}...{a.address.slice(-4)}</span>
+                    {' '}<span style={{ color: '#fcd535' }}>+{a.commission.toFixed(8)} BNB</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* History */}
+      <div style={{ ...card }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>Recent Batches</div>
+        {history.length === 0 ? (
+          <div style={{ color: '#445', fontSize: 12, textAlign: 'center', padding: 8 }}>No payout batches executed yet</div>
+        ) : history.map(b => (
+          <div key={b._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
+            <div>
+              <span style={{ color: b.status === 'executed' ? '#00c076' : '#ff4d4d', fontWeight: 700 }}>{b.status}</span>
+              <span style={{ color: '#556', marginLeft: 8 }}>{new Date(b.createdAt).toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ color: '#fcd535', fontWeight: 700 }}>{Number(b.totalAmount).toFixed(6)} BNB</span>
+              <span style={{ color: '#445' }}>{b.recipientCount} wallet(s)</span>
+              {b.txHash && <a href={`https://bscscan.com/tx/${b.txHash}`} target="_blank" rel="noreferrer" style={{ color: '#3b9eff', textDecoration: 'none' }}>View ↗</a>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Login screen
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
@@ -1293,6 +1455,7 @@ export default function AdminPanel() {
         {tab === 'traders' && <TradersTab password={password} showMsg={showMsg} />}
         {tab === 'investments' && <InvestmentsTab password={password} showMsg={showMsg} />}
         {tab === 'ai-rates' && <AiRatesTab password={password} showMsg={showMsg} />}
+        {tab === 'payouts' && <PayoutsTab password={password} showMsg={showMsg} />}
         {tab === 'stakes' && <StakesTab password={password} showMsg={showMsg} />}
         {tab === 'contract' && <ContractTab password={password} showMsg={showMsg} />}
         {tab === 'platform' && <PlatformTab password={password} showMsg={showMsg} />}

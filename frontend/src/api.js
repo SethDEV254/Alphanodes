@@ -101,3 +101,10 @@ export const adminGetAiRates = (password) =>
   api.get(`/api/admin/ai-rates?password=${password}`);
 export const adminSetAiRates = (rates, password) =>
   api.post('/api/admin/ai-rates', { rates, password });
+
+export const adminPreviewPayouts = (password) =>
+  api.get(`/api/admin/payouts/preview?password=${password}`);
+export const adminExecutePayouts = (password) =>
+  api.post('/api/admin/payouts/execute', { password });
+export const adminPayoutHistory = (password) =>
+  api.get(`/api/admin/payouts/history?password=${password}`);
