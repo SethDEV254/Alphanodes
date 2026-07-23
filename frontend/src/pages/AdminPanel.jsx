@@ -39,6 +39,202 @@ const EMPTY_TRADER = { name: '', avatar: '', roiPercent: '', dailyRate: '', winR
 
 const ROI_COLOR = (roi) => roi >= 20 ? '#00c076' : roi >= 10 ? '#fcd535' : '#3b9eff';
 
+// ─── Design system ──────────────────────────────────────────────────────────
+// Shared tokens + presentational primitives so every tab renders from one
+// consistent visual language instead of each redefining its own card/input/
+// button styles. Pure styling layer — no data or behavior lives here.
+
+const THEME = {
+  color: {
+    panel: 'rgba(12,14,20,0.95)',
+    panelAlt: 'rgba(14,17,24,0.85)',
+    border: 'rgba(255,255,255,0.07)',
+    text: '#f5f6f8',
+    textMuted: '#8a93a6',
+    textFaint: '#4b5568',
+    gold: '#fcd535',
+    goldDeep: '#f59e0b',
+    green: '#00c076',
+    red: '#ff4d4d',
+    blue: '#3b9eff',
+    blue2: '#4e8ef7',
+    purple: '#a855f7',
+  },
+  radius: { sm: 8, md: 10, lg: 16, xl: 20, pill: 999 },
+  font: { xs: 10, sm: 11, base: 12, md: 13, lg: 15, xl: 18, xxl: 22 },
+  shadow: { card: '0 4px 22px rgba(0,0,0,0.32)' },
+};
+
+function GlobalAdminStyles() {
+  return (
+    <style>{`
+      .admin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+      .admin-scroll::-webkit-scrollbar-track { background: transparent; }
+      .admin-scroll::-webkit-scrollbar-thumb { background: rgba(252,213,53,0.15); border-radius: 8px; }
+      .admin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(252,213,53,0.3); }
+
+      .admin-tab-panel { animation: adminFadeIn 0.28s cubic-bezier(0.22,1,0.36,1) both; }
+      @keyframes adminFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+      .admin-card { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+      .admin-card--hoverable:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(0,0,0,0.45); border-color: rgba(252,213,53,0.22); }
+
+      .admin-nav-btn { position: relative; transition: background 0.15s ease, color 0.15s ease, padding-left 0.15s ease; }
+      .admin-nav-btn:hover:not(.admin-nav-btn--active) { background: rgba(255,255,255,0.045); color: #cdd3de; padding-left: 19px; }
+
+      .admin-row { transition: background 0.12s ease; }
+      .admin-row:hover { background: rgba(255,255,255,0.028); }
+
+      .admin-btn { transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.12s ease, background 0.15s ease, border-color 0.15s ease, filter 0.15s ease; }
+      .admin-btn:hover:not(:disabled) { filter: brightness(1.08); }
+      .admin-btn:active:not(:disabled) { transform: scale(0.97); }
+      .admin-btn:disabled { cursor: not-allowed; }
+
+      .admin-input { transition: border-color 0.15s ease, background 0.15s ease; }
+      .admin-input:focus { border-color: rgba(252,213,53,0.5) !important; background: rgba(255,255,255,0.065) !important; }
+
+      .admin-link { transition: opacity 0.15s ease; }
+      .admin-link:hover { opacity: 0.75; }
+    `}</style>
+  );
+}
+
+function Card({ children, hoverable, accent, className = '', style, ...rest }) {
+  return (
+    <div
+      className={`admin-card${hoverable ? ' admin-card--hoverable' : ''} ${className}`}
+      style={{
+        background: THEME.color.panel,
+        border: `1px solid ${accent ? accent + '28' : THEME.color.border}`,
+        borderRadius: THEME.radius.lg,
+        padding: 24,
+        boxShadow: THEME.shadow.card,
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Badge({ color = THEME.color.textMuted, dot = true, children }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      fontSize: THEME.font.xs, fontWeight: 700, padding: '4px 10px',
+      borderRadius: THEME.radius.pill, background: `${color}18`, color,
+      border: `1px solid ${color}30`, letterSpacing: 0.3, whiteSpace: 'nowrap',
+    }}>
+      {dot && <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, flexShrink: 0 }} />}
+      {children}
+    </span>
+  );
+}
+
+function StatTile({ icon, label, value, color = THEME.color.gold, sub }) {
+  return (
+    <div className="admin-card admin-card--hoverable" style={{
+      background: `${color}0d`, border: `1px solid ${color}22`,
+      borderRadius: THEME.radius.lg, padding: '20px 22px',
+      display: 'flex', alignItems: 'center', gap: 14,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+    }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: THEME.radius.md, flexShrink: 0,
+        background: `${color}16`, border: `1px solid ${color}30`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 19, color, boxShadow: `0 0 18px ${color}20`,
+      }}>{icon}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: THEME.font.xxl, fontWeight: 900, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.3px' }}>{value}</div>
+        <div style={{ fontSize: THEME.font.sm, color: THEME.color.textMuted, marginTop: 2 }}>{label}</div>
+        {sub && <div style={{ fontSize: THEME.font.xs, color: THEME.color.textFaint, marginTop: 1 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon = '◇', title, subtitle }) {
+  return (
+    <div style={{
+      padding: '46px 24px', textAlign: 'center', color: THEME.color.textFaint,
+      background: 'rgba(255,255,255,0.015)', borderRadius: THEME.radius.lg,
+      border: '1px dashed rgba(255,255,255,0.08)',
+    }}>
+      <div style={{ fontSize: 30, marginBottom: 12, opacity: 0.25 }}>{icon}</div>
+      <div style={{ fontSize: THEME.font.lg, fontWeight: 800, marginBottom: 6, color: THEME.color.textMuted }}>{title}</div>
+      {subtitle && <div style={{ fontSize: THEME.font.base, color: THEME.color.textFaint }}>{subtitle}</div>}
+    </div>
+  );
+}
+
+function SectionHeader({ title, subtitle, action }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+      <div>
+        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.4px', color: '#fff' }}>{title}</div>
+        {subtitle && <div style={{ fontSize: THEME.font.base, color: THEME.color.textMuted, marginTop: 4 }}>{subtitle}</div>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+const BTN_VARIANTS = {
+  primary: { background: `linear-gradient(135deg,${THEME.color.gold},${THEME.color.goldDeep})`, color: '#0d0d0d', border: 'none', boxShadow: '0 4px 16px rgba(252,213,53,0.25)' },
+  info: { background: 'linear-gradient(135deg,#3b9eff,#2563eb)', color: '#fff', border: 'none', boxShadow: '0 4px 16px rgba(59,158,255,0.22)' },
+  secondary: { background: 'rgba(255,255,255,0.05)', color: '#c3c9d4', border: '1px solid rgba(255,255,255,0.1)' },
+  danger: { background: 'rgba(255,77,77,0.1)', color: THEME.color.red, border: '1px solid rgba(255,77,77,0.25)' },
+  success: { background: 'rgba(0,192,118,0.1)', color: THEME.color.green, border: '1px solid rgba(0,192,118,0.22)' },
+  ghost: { background: 'transparent', color: THEME.color.textMuted, border: '1px solid transparent' },
+};
+
+function Button({ variant = 'primary', size = 'md', style, disabled, className = '', children, ...rest }) {
+  const pad = size === 'sm' ? '7px 13px' : size === 'lg' ? '14px 0' : '10px 18px';
+  const fontSize = size === 'sm' ? THEME.font.sm : THEME.font.md;
+  return (
+    <button
+      className={`admin-btn ${className}`}
+      disabled={disabled}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        padding: pad, borderRadius: THEME.radius.md, fontSize, fontWeight: 800,
+        cursor: disabled ? 'not-allowed' : 'pointer', letterSpacing: 0.2,
+        opacity: disabled ? 0.5 : 1,
+        ...BTN_VARIANTS[variant], ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FormField({ label, color, children }) {
+  return (
+    <div>
+      {label && <label style={{ fontSize: THEME.font.xs, color: color || THEME.color.textMuted, marginBottom: 6, display: 'block', fontWeight: 700, letterSpacing: 0.9, textTransform: 'uppercase' }}>{label}</label>}
+      {children}
+    </div>
+  );
+}
+
+const inputStyle = (extra) => ({
+  background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: THEME.radius.sm, padding: '10px 14px', color: '#fff', fontSize: THEME.font.md,
+  outline: 'none', width: '100%', boxSizing: 'border-box', ...extra,
+});
+
+const labelStyle = (extra) => ({
+  fontSize: THEME.font.xs, color: THEME.color.textMuted, marginBottom: 6, display: 'block',
+  fontWeight: 700, letterSpacing: 0.9, textTransform: 'uppercase', ...extra,
+});
+
+const tableWrapStyle = { background: THEME.color.panel, borderRadius: THEME.radius.lg, border: `1px solid ${THEME.color.border}`, overflow: 'hidden', boxShadow: THEME.shadow.card };
+const thStyle = { padding: '13px 16px', textAlign: 'left', color: THEME.color.textFaint, fontWeight: 700, fontSize: THEME.font.xs, textTransform: 'uppercase', letterSpacing: 0.8 };
+const tdStyle = { padding: '12px 16px' };
+
 function TradersTab({ password, showMsg }) {
   const [traders, setTraders] = useState([]);
   const [loading, setLoading] = useState('');
@@ -90,21 +286,20 @@ function TradersTab({ password, showMsg }) {
     try { await adminDeleteTrader(id, password); showMsg('Deleted'); fetchTraders(); } catch { showMsg('Failed', true); }
   };
 
-  const inp = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box', transition: 'border-color 0.2s' };
-  const lbl = { fontSize: 10, color: '#556', marginBottom: 5, display: 'block', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' };
+  const inp = inputStyle();
+  const lbl = labelStyle();
 
   return (
-    <div style={{ padding: '28px 32px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>Copy Traders</div>
-          <div style={{ fontSize: 12, color: '#445', marginTop: 3 }}>{traders.length} traders · {traders.filter(t=>t.active).length} active</div>
-        </div>
-        <button onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'linear-gradient(135deg,#fcd535,#f59e0b)', color: '#0d0d0d', fontWeight: 800, border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13, boxShadow: '0 4px 16px rgba(252,213,53,0.3)' }}>
-          <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Add Trader
-        </button>
-      </div>
+    <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+      <SectionHeader
+        title="Copy Traders"
+        subtitle={`${traders.length} traders · ${traders.filter(t=>t.active).length} active`}
+        action={
+          <Button onClick={openCreate}>
+            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Add Trader
+          </Button>
+        }
+      />
 
       {/* Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: 20 }}>
@@ -134,7 +329,7 @@ function TradersTab({ password, showMsg }) {
                     <div>
                       <div style={{ fontWeight: 900, fontSize: 17, color: '#fff', letterSpacing: '-0.3px' }}>{t.name}</div>
                       <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        {!t.active && <span style={{ fontSize: 10, color: '#ff4d4d', background: 'rgba(255,77,77,0.1)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>Inactive</span>}
+                        {!t.active && <Badge color={THEME.color.red}>Inactive</Badge>}
                         {t.followers > 0 && <span style={{ fontSize: 11, color: '#445' }}>{t.followers} followers</span>}
                         {t.totalTrades > 0 && <span style={{ fontSize: 11, color: '#334' }}>· {t.totalTrades.toLocaleString()} trades</span>}
                       </div>
@@ -185,10 +380,8 @@ function TradersTab({ password, showMsg }) {
           );
         })}
         {traders.length === 0 && (
-          <div style={{ gridColumn:'1/-1', padding:56, textAlign:'center', color:'#334', background:'rgba(10,12,18,0.8)', borderRadius:20, border:'1px dashed rgba(255,255,255,0.06)' }}>
-            <div style={{ fontSize:36, marginBottom:14, opacity:0.2 }}>◈</div>
-            <div style={{ fontSize:15, fontWeight:800, marginBottom:8, color:'#445' }}>No traders yet</div>
-            <div style={{ fontSize:12, color:'#334' }}>Click "+ Add Trader" to create your first copy trader profile</div>
+          <div style={{ gridColumn: '1/-1' }}>
+            <EmptyState icon="◈" title="No traders yet" subtitle='Click "+ Add Trader" to create your first copy trader profile' />
           </div>
         )}
       </div>
@@ -365,9 +558,7 @@ function ContractTab({ password, showMsg }) {
 
   const Msg = ({ k }) => msgs[k] ? <div style={{ marginTop:10,fontSize:12,color:msgs[k].isErr?'#ff4d4d':'#00c076',padding:'8px 12px',borderRadius:8,background:msgs[k].isErr?'rgba(255,77,77,0.08)':'rgba(0,192,118,0.08)' }}>{msgs[k].text}</div> : null;
 
-  const card = { background:'rgba(12,14,20,0.95)',borderRadius:16,border:'1px solid rgba(255,255,255,0.06)',padding:'24px',marginBottom:16 };
-  const inp = { background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:10,padding:'10px 14px',color:'#fff',fontSize:13,outline:'none',width:'100%',boxSizing:'border-box' };
-  const lbl = { fontSize:10,color:'#556',marginBottom:6,display:'block',fontWeight:700,letterSpacing:1,textTransform:'uppercase' };
+  const inp = inputStyle();
 
   const handleFund = async () => {
     if (!fundAmt || parseFloat(fundAmt) <= 0) return setMsg('fund','Enter a valid amount',true);
@@ -417,88 +608,70 @@ function ContractTab({ password, showMsg }) {
   const CONTRACT_ADDR = info?.address || '0xe69dA690A090A2226fDD249b1d786414CcEfE1dA';
 
   return (
-    <div style={{ padding:'28px 32px',maxWidth:680 }}>
-      <div style={{ fontSize:20,fontWeight:800,letterSpacing:'-0.5px',marginBottom:6 }}>Contract</div>
-      <div style={{ fontSize:12,color:'#445',marginBottom:24 }}>BSC Mainnet · Smart contract management</div>
+    <div className="admin-tab-panel" style={{ padding:'28px 32px', maxWidth: 700 }}>
+      <SectionHeader title="Contract" subtitle="BSC Mainnet · Smart contract management" />
 
       {/* Info cards */}
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16 }}>
-        {[
-          { label:'Contract Balance', value: info?.balance != null ? `${Number(info.balance).toFixed(4)} BNB` : '—', color:'#fcd535', icon:'⬡' },
-          { label:'Network', value:'BSC Mainnet', color:'#00c076', icon:'🔗' },
-        ].map(s => (
-          <div key={s.label} style={{ background:`${s.color}08`,border:`1px solid ${s.color}18`,borderRadius:14,padding:'18px 20px',display:'flex',alignItems:'center',gap:14 }}>
-            <div style={{ fontSize:24 }}>{s.icon}</div>
-            <div>
-              <div style={{ fontSize:18,fontWeight:800,color:s.color }}>{s.value}</div>
-              <div style={{ fontSize:11,color:'#445',marginTop:2 }}>{s.label}</div>
-            </div>
-          </div>
-        ))}
+        <StatTile icon="⬡" label="Contract Balance" color={THEME.color.gold}
+          value={info?.balance != null ? `${Number(info.balance).toFixed(4)} BNB` : '—'} />
+        <StatTile icon="🔗" label="Network" color={THEME.color.green} value="BSC Mainnet" />
       </div>
 
       {/* Address */}
-      <div style={{ ...card }}>
-        <div style={{ fontSize:13,fontWeight:700,marginBottom:14 }}>Contract Address</div>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 14 }}>Contract Address</div>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-          <code style={{ flex:1,fontSize:12,color:'#fcd535',background:'rgba(252,213,53,0.06)',padding:'10px 14px',borderRadius:10,wordBreak:'break-all',border:'1px solid rgba(252,213,53,0.12)' }}>{CONTRACT_ADDR}</code>
-          <button onClick={() => navigator.clipboard.writeText(CONTRACT_ADDR)} style={{ flexShrink:0,padding:'10px 14px',background:'rgba(252,213,53,0.08)',border:'1px solid rgba(252,213,53,0.2)',borderRadius:10,color:'#fcd535',cursor:'pointer',fontSize:12,fontWeight:700 }}>Copy</button>
-          <a href={`https://bscscan.com/address/${CONTRACT_ADDR}`} target="_blank" rel="noreferrer" style={{ flexShrink:0,padding:'10px 14px',background:'rgba(59,158,255,0.08)',border:'1px solid rgba(59,158,255,0.2)',borderRadius:10,color:'#3b9eff',fontSize:12,fontWeight:700,textDecoration:'none' }}>BSCScan ↗</a>
+          <code style={{ flex:1,fontSize:12,color:THEME.color.gold,background:'rgba(252,213,53,0.06)',padding:'10px 14px',borderRadius:THEME.radius.sm,wordBreak:'break-all',border:'1px solid rgba(252,213,53,0.12)' }}>{CONTRACT_ADDR}</code>
+          <Button variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(CONTRACT_ADDR)} style={{ color: THEME.color.gold, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.2)' }}>Copy</Button>
+          <a href={`https://bscscan.com/address/${CONTRACT_ADDR}`} target="_blank" rel="noreferrer" className="admin-link" style={{ flexShrink:0,padding:'8px 14px',background:'rgba(59,158,255,0.08)',border:'1px solid rgba(59,158,255,0.2)',borderRadius:THEME.radius.md,color:THEME.color.blue,fontSize:THEME.font.sm,fontWeight:700,textDecoration:'none' }}>BSCScan ↗</a>
         </div>
-      </div>
+      </Card>
 
       {/* Fund contract */}
-      <div style={{ ...card }}>
-        <div style={{ fontSize:13,fontWeight:700,marginBottom:4 }}>Fund Contract</div>
-        <div style={{ fontSize:12,color:'#445',marginBottom:16 }}>Send BNB from the owner wallet to fund user withdrawals.</div>
-        <label style={lbl}>Amount (BNB)</label>
-        <div style={{ display:'flex',gap:10 }}>
-          <input style={{ ...inp,flex:1 }} type="number" value={fundAmt} onChange={e=>setFundAmt(e.target.value)} placeholder="e.g. 1.0" step="0.01" />
-          <button onClick={handleFund} disabled={loading==='fund'} style={{ flexShrink:0,padding:'10px 20px',background:'linear-gradient(135deg,#fcd535,#f59e0b)',color:'#0d0d0d',fontWeight:800,border:'none',borderRadius:10,cursor:'pointer',fontSize:13,opacity:loading==='fund'?0.6:1 }}>
-            {loading==='fund'?'Sending...':'Fund'}
-          </button>
-        </div>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 4 }}>Fund Contract</div>
+        <div style={{ fontSize: THEME.font.base, color: THEME.color.textMuted, marginBottom: 16 }}>Send BNB from the owner wallet to fund user withdrawals.</div>
+        <FormField label="Amount (BNB)">
+          <div style={{ display:'flex',gap:10 }}>
+            <input className="admin-input" style={{ ...inp,flex:1 }} type="number" value={fundAmt} onChange={e=>setFundAmt(e.target.value)} placeholder="e.g. 1.0" step="0.01" />
+            <Button onClick={handleFund} disabled={loading==='fund'}>{loading==='fund'?'Sending...':'Fund'}</Button>
+          </div>
+        </FormField>
         <Msg k="fund" />
-      </div>
+      </Card>
 
       {/* Pause / Unpause */}
-      <div style={{ ...card }}>
-        <div style={{ fontSize:13,fontWeight:700,marginBottom:4 }}>Pause / Unpause Contract</div>
-        <div style={{ fontSize:12,color:'#445',marginBottom:16 }}>Pausing blocks all on-chain deposits and withdrawals.</div>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 4 }}>Pause / Unpause Contract</div>
+        <div style={{ fontSize: THEME.font.base, color: THEME.color.textMuted, marginBottom: 16 }}>Pausing blocks all on-chain deposits and withdrawals.</div>
         <div style={{ display:'flex',gap:10 }}>
-          <button onClick={() => handlePause(true)} disabled={loading==='pause'} style={{ flex:1,padding:'11px',background:'rgba(255,77,77,0.08)',border:'1px solid rgba(255,77,77,0.2)',borderRadius:10,color:'#ff4d4d',fontWeight:700,cursor:'pointer',fontSize:13 }}>
-            ⏸ Pause Contract
-          </button>
-          <button onClick={() => handlePause(false)} disabled={loading==='pause'} style={{ flex:1,padding:'11px',background:'rgba(0,192,118,0.08)',border:'1px solid rgba(0,192,118,0.2)',borderRadius:10,color:'#00c076',fontWeight:700,cursor:'pointer',fontSize:13 }}>
-            ▶ Unpause Contract
-          </button>
+          <Button variant="danger" onClick={() => handlePause(true)} disabled={loading==='pause'} style={{ flex: 1 }}>⏸ Pause Contract</Button>
+          <Button variant="success" onClick={() => handlePause(false)} disabled={loading==='pause'} style={{ flex: 1 }}>▶ Unpause Contract</Button>
         </div>
         <Msg k="pause" />
-      </div>
+      </Card>
 
       {/* Treasury wallet */}
-      <div style={{ ...card }}>
-        <div style={{ fontSize:13,fontWeight:700,marginBottom:4 }}>Treasury Wallet</div>
-        <div style={{ fontSize:12,color:'#445',marginBottom:16 }}>Change the wallet address that receives funds from emergency withdrawals.</div>
-        <label style={lbl}>New Treasury Address</label>
-        <div style={{ display:'flex',gap:10 }}>
-          <input style={{ ...inp,flex:1,fontFamily:'monospace',fontSize:12 }} type="text" value={treasuryAddr} onChange={e=>setTreasuryAddr(e.target.value)} placeholder="0x..." />
-          <button onClick={handleSetTreasury} disabled={loading==='treasury'} style={{ flexShrink:0,padding:'10px 20px',background:'linear-gradient(135deg,#3b9eff,#2563eb)',color:'#fff',fontWeight:800,border:'none',borderRadius:10,cursor:'pointer',fontSize:13,opacity:loading==='treasury'?0.6:1 }}>
-            {loading==='treasury'?'Setting...':'Set Wallet'}
-          </button>
-        </div>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 4 }}>Treasury Wallet</div>
+        <div style={{ fontSize: THEME.font.base, color: THEME.color.textMuted, marginBottom: 16 }}>Change the wallet address that receives funds from emergency withdrawals.</div>
+        <FormField label="New Treasury Address">
+          <div style={{ display:'flex',gap:10 }}>
+            <input className="admin-input" style={{ ...inp,flex:1,fontFamily:'monospace',fontSize:12 }} type="text" value={treasuryAddr} onChange={e=>setTreasuryAddr(e.target.value)} placeholder="0x..." />
+            <Button variant="info" onClick={handleSetTreasury} disabled={loading==='treasury'}>{loading==='treasury'?'Setting...':'Set Wallet'}</Button>
+          </div>
+        </FormField>
         <Msg k="treasury" />
-      </div>
+      </Card>
 
       {/* Emergency */}
-      <div style={{ ...card,border:'1px solid rgba(255,77,77,0.12)' }}>
-        <div style={{ fontSize:13,fontWeight:700,marginBottom:4,color:'#ff4d4d' }}>⚠ Emergency Withdraw</div>
-        <div style={{ fontSize:12,color:'#445',marginBottom:16 }}>Transfers ALL contract BNB to the treasury wallet. Use only in emergencies — this cannot be undone.</div>
-        <button onClick={handleEmergency} disabled={loading==='emergency'} style={{ padding:'11px 24px',background:'rgba(255,77,77,0.1)',border:'1px solid rgba(255,77,77,0.25)',borderRadius:10,color:'#ff4d4d',fontWeight:800,cursor:'pointer',fontSize:13 }}>
-          {loading==='emergency'?'Processing...':'Emergency Withdraw'}
-        </button>
+      <Card accent={THEME.color.red}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 4, color: THEME.color.red }}>⚠ Emergency Withdraw</div>
+        <div style={{ fontSize: THEME.font.base, color: THEME.color.textMuted, marginBottom: 16 }}>Transfers ALL contract BNB to the treasury wallet. Use only in emergencies — this cannot be undone.</div>
+        <Button variant="danger" onClick={handleEmergency} disabled={loading==='emergency'}>{loading==='emergency'?'Processing...':'Emergency Withdraw'}</Button>
         <Msg k="emergency" />
-      </div>
+      </Card>
     </div>
   );
 }
@@ -527,49 +700,49 @@ function InvestmentsTab({ password, showMsg }) {
     finally { setLoading(''); }
   };
 
-  const STATUS_COLOR = { active: '#00c076', claimed: '#3b9eff', cancelled: '#ff4d4d' };
+  const STATUS_COLOR = { active: THEME.color.green, claimed: THEME.color.blue, cancelled: THEME.color.red };
 
   return (
-    <div style={{ padding: '28px 32px' }}>
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>AI Investments</div>
+    <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+      <SectionHeader title="AI Investments" />
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter by address..."
-          style={{ flex: 1, minWidth: 200, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(252,213,53,0.15)', borderRadius: 8, padding: '9px 14px', color: '#fff', fontSize: 13, outline: 'none' }} />
+        <input className="admin-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter by address..."
+          style={inputStyle({ flex: 1, minWidth: 200, borderColor: 'rgba(252,213,53,0.15)' })} />
         <select value={status} onChange={e => setStatus(e.target.value)}
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(252,213,53,0.15)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none' }}>
+          style={inputStyle({ width: 'auto', borderColor: 'rgba(252,213,53,0.15)' })}>
           <option value="">All</option>
           <option value="active">Active</option>
           <option value="claimed">Claimed</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <button onClick={fetch} style={{ padding: '9px 16px', background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.2)', borderRadius: 8, color: '#fcd535', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Search</button>
+        <Button variant="secondary" onClick={fetch} style={{ color: THEME.color.gold, background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.2)' }}>Search</Button>
       </div>
-      <div style={{ background: 'rgba(12,14,20,0.95)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      <div style={tableWrapStyle}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: THEME.font.base }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <tr style={{ borderBottom: `1px solid ${THEME.color.border}` }}>
               {['Address','Package','Amount','Daily Rate','End Date','Claimed','Status','Actions'].map(h => (
-                <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: '#445', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>{h}</th>
+                <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {investments.map(inv => (
-              <tr key={inv._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                <td style={{ padding: '11px 14px', color: '#889', fontFamily: 'monospace' }}>{inv.address?.slice(0,8)}...{inv.address?.slice(-4)}</td>
-                <td style={{ padding: '11px 14px', color: '#ccc' }}>{inv.packageName}</td>
-                <td style={{ padding: '11px 14px', color: '#fcd535', fontWeight: 700 }}>{Number(inv.amount||0).toFixed(4)} BNB</td>
-                <td style={{ padding: '11px 14px', color: '#aaa' }}>{((inv.dailyRateBps||0)/100).toFixed(1)}%</td>
-                <td style={{ padding: '11px 14px', color: '#667' }}>{inv.endDate ? new Date(inv.endDate).toLocaleDateString() : '—'}</td>
-                <td style={{ padding: '11px 14px', color: '#00c076' }}>{Number(inv.claimedEarnings||0).toFixed(4)} BNB</td>
-                <td style={{ padding: '11px 14px' }}>
-                  <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, fontWeight: 700, background: `${STATUS_COLOR[inv.status]||'#667'}18`, color: STATUS_COLOR[inv.status]||'#667' }}>{inv.status}</span>
+              <tr key={inv._id} className="admin-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                <td style={{ ...tdStyle, color: '#9aa3b5', fontFamily: 'monospace' }}>{inv.address?.slice(0,8)}...{inv.address?.slice(-4)}</td>
+                <td style={{ ...tdStyle, color: '#dfe3ea' }}>{inv.packageName}</td>
+                <td style={{ ...tdStyle, color: THEME.color.gold, fontWeight: 700 }}>{Number(inv.amount||0).toFixed(4)} BNB</td>
+                <td style={{ ...tdStyle, color: '#aab' }}>{((inv.dailyRateBps||0)/100).toFixed(1)}%</td>
+                <td style={{ ...tdStyle, color: THEME.color.textFaint }}>{inv.endDate ? new Date(inv.endDate).toLocaleDateString() : '—'}</td>
+                <td style={{ ...tdStyle, color: THEME.color.green }}>{Number(inv.claimedEarnings||0).toFixed(4)} BNB</td>
+                <td style={tdStyle}>
+                  <Badge color={STATUS_COLOR[inv.status] || THEME.color.textMuted}>{inv.status}</Badge>
                 </td>
-                <td style={{ padding: '11px 14px' }}>
+                <td style={tdStyle}>
                   {inv.status === 'active' && (
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => manage(inv._id, 'complete')} disabled={loading===inv._id+'complete'} style={{ fontSize: 10, padding: '4px 10px', borderRadius: 5, cursor: 'pointer', background: 'rgba(0,192,118,0.1)', border: '1px solid rgba(0,192,118,0.2)', color: '#00c076', fontWeight: 700 }}>Complete</button>
-                      <button onClick={() => manage(inv._id, 'cancel')} disabled={loading===inv._id+'cancel'} style={{ fontSize: 10, padding: '4px 10px', borderRadius: 5, cursor: 'pointer', background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.2)', color: '#ff4d4d', fontWeight: 700 }}>Cancel</button>
+                      <Button variant="success" size="sm" onClick={() => manage(inv._id, 'complete')} disabled={loading===inv._id+'complete'} style={{ fontSize: 10, padding: '4px 10px' }}>Complete</Button>
+                      <Button variant="danger" size="sm" onClick={() => manage(inv._id, 'cancel')} disabled={loading===inv._id+'cancel'} style={{ fontSize: 10, padding: '4px 10px' }}>Cancel</Button>
                     </div>
                   )}
                 </td>
@@ -577,7 +750,7 @@ function InvestmentsTab({ password, showMsg }) {
             ))}
           </tbody>
         </table>
-        {investments.length === 0 && <div style={{ padding: 32, color: '#445', fontSize: 13, textAlign: 'center' }}>No investments found</div>}
+        {investments.length === 0 && <EmptyState icon="◆" title="No investments found" />}
       </div>
     </div>
   );
@@ -592,22 +765,22 @@ function StakesTab({ password }) {
     try { const r = await adminGetStakes(search.trim()); setStakes(r.data.data || []); } catch {}
   };
 
-  const STATUS_COLOR = { active: '#00c076', completed: '#3b9eff', earlyUnlocked: '#fcd535' };
+  const STATUS_COLOR = { active: THEME.color.green, completed: THEME.color.blue, earlyUnlocked: THEME.color.gold };
 
   return (
-    <div style={{ padding: '28px 32px' }}>
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>Stakes</div>
+    <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+      <SectionHeader title="Stakes" />
       <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key==='Enter' && fetch()} placeholder="Enter wallet address..."
-          style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(252,213,53,0.15)', borderRadius: 8, padding: '9px 14px', color: '#fff', fontSize: 13, outline: 'none' }} />
-        <button onClick={fetch} style={{ padding: '9px 16px', background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.2)', borderRadius: 8, color: '#fcd535', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Search</button>
+        <input className="admin-input" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key==='Enter' && fetch()} placeholder="Enter wallet address..."
+          style={inputStyle({ flex: 1, borderColor: 'rgba(252,213,53,0.15)' })} />
+        <Button variant="secondary" onClick={fetch} style={{ color: THEME.color.gold, background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.2)' }}>Search</Button>
       </div>
-      <div style={{ background: 'rgba(12,14,20,0.95)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      <div style={tableWrapStyle}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: THEME.font.base }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <tr style={{ borderBottom: `1px solid ${THEME.color.border}` }}>
               {['Address','Amount','Duration','Daily Rate','End Date','Earnings','Status'].map(h => (
-                <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: '#445', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>{h}</th>
+                <th key={h} style={thStyle}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -615,22 +788,22 @@ function StakesTab({ password }) {
             {stakes.map(s => {
               const statusKey = s.status || (s.earlyUnlocked ? 'earlyUnlocked' : s.active ? 'active' : 'completed');
               return (
-                <tr key={s._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <td style={{ padding: '11px 14px', color: '#889', fontFamily: 'monospace' }}>{s.address?.slice(0,8)}...{s.address?.slice(-4)}</td>
-                  <td style={{ padding: '11px 14px', color: '#fcd535', fontWeight: 700 }}>{Number(s.amount||0).toFixed(4)} BNB</td>
-                  <td style={{ padding: '11px 14px', color: '#aaa' }}>{s.durationDays || '—'} days</td>
-                  <td style={{ padding: '11px 14px', color: '#aaa' }}>{((s.dailyRateBps||0)/100).toFixed(1)}%</td>
-                  <td style={{ padding: '11px 14px', color: '#667' }}>{s.endDate ? new Date(s.endDate).toLocaleDateString() : '—'}</td>
-                  <td style={{ padding: '11px 14px', color: '#00c076' }}>{Number(s.claimedEarnings||0).toFixed(4)} BNB</td>
-                  <td style={{ padding: '11px 14px' }}>
-                    <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, fontWeight: 700, background: `${STATUS_COLOR[statusKey]||'#667'}18`, color: STATUS_COLOR[statusKey]||'#667' }}>{statusKey}</span>
+                <tr key={s._id} className="admin-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <td style={{ ...tdStyle, color: '#9aa3b5', fontFamily: 'monospace' }}>{s.address?.slice(0,8)}...{s.address?.slice(-4)}</td>
+                  <td style={{ ...tdStyle, color: THEME.color.gold, fontWeight: 700 }}>{Number(s.amount||0).toFixed(4)} BNB</td>
+                  <td style={{ ...tdStyle, color: '#aab' }}>{s.durationDays || '—'} days</td>
+                  <td style={{ ...tdStyle, color: '#aab' }}>{((s.dailyRateBps||0)/100).toFixed(1)}%</td>
+                  <td style={{ ...tdStyle, color: THEME.color.textFaint }}>{s.endDate ? new Date(s.endDate).toLocaleDateString() : '—'}</td>
+                  <td style={{ ...tdStyle, color: THEME.color.green }}>{Number(s.claimedEarnings||0).toFixed(4)} BNB</td>
+                  <td style={tdStyle}>
+                    <Badge color={STATUS_COLOR[statusKey] || THEME.color.textMuted}>{statusKey}</Badge>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {stakes.length === 0 && <div style={{ padding: 32, color: '#445', fontSize: 13, textAlign: 'center' }}>Enter a wallet address to search stakes</div>}
+        {stakes.length === 0 && <EmptyState icon="⊟" title="Search for a wallet" subtitle="Enter a wallet address above to look up its stakes" />}
       </div>
     </div>
   );
@@ -668,40 +841,34 @@ function PlatformTab({ password, showMsg }) {
     finally { setLoading(''); }
   };
 
-  const card = { background: 'rgba(12,14,20,0.95)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', padding: 24, marginBottom: 16, maxWidth: 600 };
-  const inp = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' };
+  const inp = inputStyle();
 
   return (
-    <div style={{ padding: '28px 32px' }}>
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Platform Control</div>
-      <div style={{ fontSize: 12, color: '#445', marginBottom: 24 }}>Manage platform-wide settings and maintenance mode</div>
+    <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+      <SectionHeader title="Platform Control" subtitle="Manage platform-wide settings and maintenance mode" />
 
-      <div style={{ ...card }}>
+      <Card style={{ marginBottom: 16, maxWidth: 620 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Platform Status</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: paused ? '#ff4d4d' : '#00c076', boxShadow: `0 0 8px ${paused ? '#ff4d4d' : '#00c076'}` }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: paused ? '#ff4d4d' : '#00c076' }}>{paused ? 'Paused' : 'Running'}</span>
-            </div>
-            <div style={{ fontSize: 11, color: '#445', marginTop: 4 }}>{paused ? 'Deposits and new investments are blocked' : 'All features active'}</div>
+            <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 8 }}>Platform Status</div>
+            <Badge color={paused ? THEME.color.red : THEME.color.green}>{paused ? 'Paused' : 'Running'}</Badge>
+            <div style={{ fontSize: THEME.font.sm, color: THEME.color.textMuted, marginTop: 8 }}>{paused ? 'Deposits and new investments are blocked' : 'All features active'}</div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => handlePause(true)} disabled={paused || loading==='pause'} style={{ padding: '10px 18px', background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.2)', borderRadius: 10, color: '#ff4d4d', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: paused ? 0.4 : 1 }}>⏸ Pause</button>
-            <button onClick={() => handlePause(false)} disabled={!paused || loading==='pause'} style={{ padding: '10px 18px', background: 'rgba(0,192,118,0.08)', border: '1px solid rgba(0,192,118,0.2)', borderRadius: 10, color: '#00c076', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: !paused ? 0.4 : 1 }}>▶ Resume</button>
+            <Button variant="danger" onClick={() => handlePause(true)} disabled={paused || loading==='pause'}>⏸ Pause</Button>
+            <Button variant="success" onClick={() => handlePause(false)} disabled={!paused || loading==='pause'}>▶ Resume</Button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div style={{ ...card }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Maintenance Message</div>
-        <div style={{ fontSize: 12, color: '#445', marginBottom: 14 }}>Shown to users when the platform is paused.</div>
-        <input style={inp} value={message} onChange={e => setMessage(e.target.value)} placeholder="e.g. Platform under maintenance. Back soon."
-          onFocus={e=>e.target.style.borderColor='rgba(252,213,53,0.4)'} onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.08)'} />
-        <button onClick={handleSaveMessage} disabled={loading==='msg'} style={{ marginTop: 12, padding: '10px 20px', background: 'linear-gradient(135deg,#fcd535,#f59e0b)', color: '#0d0d0d', fontWeight: 800, border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13 }}>
+      <Card style={{ maxWidth: 620 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 4 }}>Maintenance Message</div>
+        <div style={{ fontSize: THEME.font.base, color: THEME.color.textMuted, marginBottom: 14 }}>Shown to users when the platform is paused.</div>
+        <input className="admin-input" style={inp} value={message} onChange={e => setMessage(e.target.value)} placeholder="e.g. Platform under maintenance. Back soon." />
+        <Button onClick={handleSaveMessage} disabled={loading==='msg'} style={{ marginTop: 12 }}>
           {loading==='msg' ? 'Saving...' : 'Save Message'}
-        </button>
-      </div>
+        </Button>
+      </Card>
     </div>
   );
 }
@@ -740,40 +907,38 @@ function AiRatesTab({ password, showMsg }) {
     finally { setLoading(''); }
   };
 
-  const card = { background: 'rgba(12,14,20,0.95)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', padding: 24, marginBottom: 16, maxWidth: 680 };
-  const inp = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' };
-  const lbl = { fontSize: 10, color: '#556', marginBottom: 6, display: 'block', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' };
+  const inp = inputStyle();
 
-  if (!rates) return <div style={{ padding: '28px 32px', color: '#556' }}>Loading...</div>;
+  if (!rates) return <div className="admin-tab-panel" style={{ padding: '28px 32px', color: THEME.color.textMuted }}>Loading...</div>;
 
   return (
-    <div style={{ padding: '28px 32px' }}>
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>AI Rates</div>
-      <div style={{ fontSize: 12, color: '#445', marginBottom: 24 }}>
-        Daily return range per AI package. Each new deployment locks in a random rate within its band — actual returns average out across the range shown.
+    <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+      <SectionHeader
+        title="AI Rates"
+        subtitle="Daily return range per AI package. Each new deployment locks in a random rate within its band — actual returns average out across the range shown."
+      />
+
+      <div style={{ maxWidth: 680 }}>
+        {Object.entries(rates).map(([id, r]) => (
+          <Card key={id} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: THEME.font.lg, fontWeight: 700, marginBottom: 16 }}>{r.name || id}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <FormField label="Min Daily %">
+                <input className="admin-input" style={inp} type="number" step="0.01" min="0" value={r.min}
+                  onChange={e => setField(id, 'min', e.target.value)} />
+              </FormField>
+              <FormField label="Max Daily %">
+                <input className="admin-input" style={inp} type="number" step="0.01" min="0" value={r.max}
+                  onChange={e => setField(id, 'max', e.target.value)} />
+              </FormField>
+            </div>
+          </Card>
+        ))}
+
+        <Button onClick={handleSave} disabled={loading === 'save'}>
+          {loading === 'save' ? 'Saving...' : 'Save Rates'}
+        </Button>
       </div>
-
-      {Object.entries(rates).map(([id, r]) => (
-        <div key={id} style={{ ...card }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>{r.name || id}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <label style={lbl}>Min Daily %</label>
-              <input style={inp} type="number" step="0.01" min="0" value={r.min}
-                onChange={e => setField(id, 'min', e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>Max Daily %</label>
-              <input style={inp} type="number" step="0.01" min="0" value={r.max}
-                onChange={e => setField(id, 'max', e.target.value)} />
-            </div>
-          </div>
-        </div>
-      ))}
-
-      <button onClick={handleSave} disabled={loading === 'save'} style={{ padding: '12px 24px', background: 'linear-gradient(135deg,#fcd535,#f59e0b)', color: '#0d0d0d', fontWeight: 800, border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13 }}>
-        {loading === 'save' ? 'Saving...' : 'Save Rates'}
-      </button>
     </div>
   );
 }
@@ -819,121 +984,101 @@ function PayoutsTab({ password, showMsg }) {
     finally { setLoading(''); }
   };
 
-  const card = { background: 'rgba(12,14,20,0.95)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', padding: 24, marginBottom: 16 };
-
-  if (!preview) return <div style={{ padding: '28px 32px', color: '#556' }}>Loading...</div>;
+  if (!preview) return <div className="admin-tab-panel" style={{ padding: '28px 32px', color: THEME.color.textMuted }}>Loading...</div>;
 
   const insufficient = preview.sufficientBalance === false;
+  const statusColor = insufficient ? THEME.color.red : THEME.color.green;
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 900 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Daily Payouts</div>
-        <button onClick={fetchPreview} disabled={loading === 'preview'} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#889', fontSize: 12, cursor: 'pointer' }}>
-          {loading === 'preview' ? 'Refreshing...' : '↺ Refresh'}
-        </button>
-      </div>
-      <div style={{ fontSize: 12, color: '#445', marginBottom: 24 }}>
-        AI ROI + 3-tier affiliate commissions ({preview.affiliateRates.map(r => `${r * 100}%`).join(' / ')}), sent as real on-chain BNB.
-      </div>
+    <div className="admin-tab-panel" style={{ padding: '28px 32px', maxWidth: 920 }}>
+      <SectionHeader
+        title="Daily Payouts"
+        subtitle={`AI ROI + 3-tier affiliate commissions (${preview.affiliateRates.map(r => `${r * 100}%`).join(' / ')}), sent as real on-chain BNB.`}
+        action={<Button variant="secondary" size="sm" onClick={fetchPreview} disabled={loading === 'preview'}>{loading === 'preview' ? 'Refreshing...' : '↺ Refresh'}</Button>}
+      />
 
       {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={{ ...card, padding: '18px 20px', marginBottom: 0 }}>
-          <div style={{ fontSize: 10, color: '#556', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Owed Now</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#fcd535' }}>{preview.totalAmount.toFixed(6)} BNB</div>
-          <div style={{ fontSize: 11, color: '#445', marginTop: 2 }}>{preview.recipients.length} wallet(s)</div>
-        </div>
-        <div style={{ ...card, padding: '18px 20px', marginBottom: 0 }}>
-          <div style={{ fontSize: 10, color: '#556', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Contract Balance</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#3b9eff' }}>{preview.contractBalance != null ? preview.contractBalance.toFixed(6) : '—'} BNB</div>
-        </div>
-        <div style={{ ...card, padding: '18px 20px', marginBottom: 0, border: `1px solid ${insufficient ? 'rgba(255,77,77,0.3)' : 'rgba(0,192,118,0.2)'}` }}>
-          <div style={{ fontSize: 10, color: '#556', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Status</div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: insufficient ? '#ff4d4d' : '#00c076' }}>
-            {preview.sufficientBalance == null ? 'Unknown' : insufficient ? 'Insufficient Balance' : 'Ready'}
-          </div>
-        </div>
+        <StatTile icon="⇄" label="Owed Now" color={THEME.color.gold} value={`${preview.totalAmount.toFixed(6)} BNB`} sub={`${preview.recipients.length} wallet(s)`} />
+        <StatTile icon="⬡" label="Contract Balance" color={THEME.color.blue} value={preview.contractBalance != null ? `${preview.contractBalance.toFixed(6)} BNB` : '—'} />
+        <StatTile icon={insufficient ? '⚠' : '✓'} label="Status" color={statusColor} value={preview.sufficientBalance == null ? 'Unknown' : insufficient ? 'Insufficient' : 'Ready'} />
       </div>
 
-      <button
+      <Button
+        size="lg"
         onClick={handleExecute}
         disabled={loading === 'execute' || !preview.recipients.length || insufficient}
-        style={{
-          width: '100%', padding: '14px 0', borderRadius: 12, fontSize: 14, fontWeight: 800, marginBottom: 20,
-          background: (!preview.recipients.length || insufficient) ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg,#fcd535,#f59e0b)',
-          color: (!preview.recipients.length || insufficient) ? '#556' : '#0d0d0d',
-          border: 'none', cursor: (!preview.recipients.length || insufficient) ? 'not-allowed' : 'pointer',
-        }}
+        variant={(!preview.recipients.length || insufficient) ? 'secondary' : 'primary'}
+        style={{ width: '100%', marginBottom: 20 }}
       >
         {loading === 'execute' ? 'Sending on-chain...' : !preview.recipients.length ? 'Nothing pending' : insufficient ? 'Fund the contract first' : `Execute Payout — ${preview.totalAmount.toFixed(6)} BNB`}
-      </button>
+      </Button>
 
       {/* Recipients */}
-      <div style={{ ...card }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>Recipients</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 14 }}>Recipients</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: THEME.font.base }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <tr style={{ borderBottom: `1px solid ${THEME.color.border}` }}>
               {['Address', 'Amount (BNB)'].map(h => (
-                <th key={h} style={{ padding: '8px 0', textAlign: 'left', color: '#445', fontWeight: 700, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
+                <th key={h} style={{ ...thStyle, padding: '8px 0' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {preview.recipients.map(r => (
-              <tr key={r.address} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                <td style={{ padding: '8px 0', color: '#889', fontFamily: 'monospace' }}>{r.address.slice(0, 8)}...{r.address.slice(-4)}</td>
-                <td style={{ padding: '8px 0', color: '#fcd535', fontWeight: 700 }}>{r.amount.toFixed(8)}</td>
+              <tr key={r.address} className="admin-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                <td style={{ padding: '9px 0', color: '#9aa3b5', fontFamily: 'monospace' }}>{r.address.slice(0, 8)}...{r.address.slice(-4)}</td>
+                <td style={{ padding: '9px 0', color: THEME.color.gold, fontWeight: 700 }}>{r.amount.toFixed(8)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!preview.recipients.length && <div style={{ padding: 16, color: '#445', fontSize: 12, textAlign: 'center' }}>Nothing pending right now</div>}
+        {!preview.recipients.length && <EmptyState icon="⇄" title="Nothing pending right now" />}
 
-        <button onClick={() => setShowBreakdown(v => !v)} style={{ marginTop: 14, fontSize: 11, background: 'none', border: 'none', color: '#3b9eff', cursor: 'pointer', padding: 0 }}>
-          {showBreakdown ? 'Hide' : 'Show'} per-investment breakdown
+        <button className="admin-link" onClick={() => setShowBreakdown(v => !v)} style={{ marginTop: 14, fontSize: THEME.font.sm, background: 'none', border: 'none', color: THEME.color.blue, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+          {showBreakdown ? '− Hide' : '+ Show'} per-investment breakdown
         </button>
 
         {showBreakdown && (
           <div style={{ marginTop: 12 }}>
             {preview.breakdown.map(d => (
-              <div key={d.investmentId} style={{ padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: 11 }}>
-                <div style={{ color: '#889' }}>
+              <div key={d.investmentId} style={{ padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: THEME.font.sm }}>
+                <div style={{ color: '#9aa3b5' }}>
                   <span style={{ fontFamily: 'monospace' }}>{d.address.slice(0, 8)}...{d.address.slice(-4)}</span>
-                  {' — '}{d.packageName} — ROI <span style={{ color: '#00c076', fontWeight: 700 }}>{d.roi.toFixed(8)} BNB</span>
+                  {' — '}{d.packageName} — ROI <span style={{ color: THEME.color.green, fontWeight: 700 }}>{d.roi.toFixed(8)} BNB</span>
                 </div>
                 {d.affiliates.map(a => (
-                  <div key={a.level} style={{ paddingLeft: 16, color: '#556', marginTop: 3 }}>
+                  <div key={a.level} style={{ paddingLeft: 16, color: THEME.color.textMuted, marginTop: 3 }}>
                     ↳ Level {a.level} → <span style={{ fontFamily: 'monospace' }}>{a.address.slice(0, 8)}...{a.address.slice(-4)}</span>
-                    {' '}<span style={{ color: '#fcd535' }}>+{a.commission.toFixed(8)} BNB</span>
+                    {' '}<span style={{ color: THEME.color.gold }}>+{a.commission.toFixed(8)} BNB</span>
                   </div>
                 ))}
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* History */}
-      <div style={{ ...card }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>Recent Batches</div>
+      <Card>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 14 }}>Recent Batches</div>
         {history.length === 0 ? (
-          <div style={{ color: '#445', fontSize: 12, textAlign: 'center', padding: 8 }}>No payout batches executed yet</div>
+          <EmptyState icon="◷" title="No payout batches executed yet" />
         ) : history.map(b => (
-          <div key={b._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: 12 }}>
-            <div>
-              <span style={{ color: b.status === 'executed' ? '#00c076' : '#ff4d4d', fontWeight: 700 }}>{b.status}</span>
-              <span style={{ color: '#556', marginLeft: 8 }}>{new Date(b.createdAt).toLocaleString()}</span>
+          <div key={b._id} className="admin-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: THEME.font.base, borderRadius: THEME.radius.sm }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Badge color={b.status === 'executed' ? THEME.color.green : THEME.color.red}>{b.status}</Badge>
+              <span style={{ color: THEME.color.textFaint }}>{new Date(b.createdAt).toLocaleString()}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ color: '#fcd535', fontWeight: 700 }}>{Number(b.totalAmount).toFixed(6)} BNB</span>
-              <span style={{ color: '#445' }}>{b.recipientCount} wallet(s)</span>
-              {b.txHash && <a href={`https://bscscan.com/tx/${b.txHash}`} target="_blank" rel="noreferrer" style={{ color: '#3b9eff', textDecoration: 'none' }}>View ↗</a>}
+              <span style={{ color: THEME.color.gold, fontWeight: 700 }}>{Number(b.totalAmount).toFixed(6)} BNB</span>
+              <span style={{ color: THEME.color.textMuted }}>{b.recipientCount} wallet(s)</span>
+              {b.txHash && <a href={`https://bscscan.com/tx/${b.txHash}`} target="_blank" rel="noreferrer" className="admin-link" style={{ color: THEME.color.blue, textDecoration: 'none', fontWeight: 600 }}>View ↗</a>}
             </div>
           </div>
         ))}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -976,36 +1121,41 @@ function LoginScreen({ onLogin }) {
 
   return (
     <div ref={vantaRef} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <GlobalAdminStyles />
       <div style={{
         background: 'rgba(8,11,16,0.85)', backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(252,213,53,0.15)', borderRadius: 16,
-        padding: '40px 36px', width: 380, position: 'relative', zIndex: 1,
-        boxShadow: '0 0 60px rgba(252,213,53,0.08)',
+        border: '1px solid rgba(252,213,53,0.15)', borderRadius: THEME.radius.xl,
+        padding: '44px 38px', width: 380, position: 'relative', zIndex: 1,
+        boxShadow: '0 0 60px rgba(252,213,53,0.08), 0 24px 60px rgba(0,0,0,0.5)',
+        animation: 'adminFadeIn 0.4s cubic-bezier(0.22,1,0.36,1) both',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>⚙</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#fcd535', textShadow: '0 0 20px rgba(252,213,53,0.5)' }}>
+          <div style={{
+            width: 52, height: 52, margin: '0 auto 14px', borderRadius: THEME.radius.lg,
+            background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 24, boxShadow: '0 0 24px rgba(252,213,53,0.15)',
+          }}>⚙</div>
+          <div style={{ fontSize: 21, fontWeight: 900, color: THEME.color.gold, textShadow: '0 0 20px rgba(252,213,53,0.5)', letterSpacing: '-0.3px' }}>
             ALPHA<span style={{ color: '#fff' }}>NODES</span>
           </div>
-          <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>Admin Panel</div>
+          <div style={{ fontSize: THEME.font.base, color: THEME.color.textFaint, marginTop: 5, letterSpacing: 0.5 }}>Admin Panel</div>
         </div>
         {error && (
-          <div style={{ padding: '8px 12px', borderRadius: 8, marginBottom: 14, fontSize: 13, background: 'rgba(255,77,77,0.1)', color: '#ff4d4d', border: '1px solid rgba(255,77,77,0.2)' }}>
+          <div style={{ padding: '10px 14px', borderRadius: THEME.radius.sm, marginBottom: 14, fontSize: THEME.font.md, background: 'rgba(255,77,77,0.1)', color: THEME.color.red, border: '1px solid rgba(255,77,77,0.2)' }}>
             {error}
           </div>
         )}
         <input
+          className="admin-input"
           type="password" placeholder="Admin password"
           value={password} onChange={e => setPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleLogin()}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(252,213,53,0.2)', borderRadius: 8, padding: '12px 14px', color: '#fff', fontSize: 14, outline: 'none', marginBottom: 14, boxSizing: 'border-box' }}
+          style={inputStyle({ border: '1px solid rgba(252,213,53,0.2)', padding: '13px 14px', fontSize: 14, marginBottom: 14 })}
         />
-        <button
-          onClick={handleLogin} disabled={loading}
-          style={{ width: '100%', background: '#fcd535', color: '#0d0d0d', fontWeight: 800, border: 'none', borderRadius: 8, padding: '12px', cursor: 'pointer', fontSize: 14, boxShadow: '0 0 20px rgba(252,213,53,0.3)' }}
-        >
+        <Button onClick={handleLogin} disabled={loading} size="lg" style={{ width: '100%', boxShadow: '0 0 20px rgba(252,213,53,0.3)' }}>
           {loading ? 'Verifying...' : 'Login'}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1136,60 +1286,71 @@ export default function AdminPanel() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#080b10', color: '#fff', fontFamily: "'Inter', sans-serif" }}>
+      <GlobalAdminStyles />
 
       {/* Sidebar */}
       <aside style={{
-        width: 200, background: 'rgba(10,13,20,0.95)', borderRight: '1px solid rgba(252,213,53,0.08)',
+        width: 208, background: 'rgba(10,13,20,0.97)', borderRight: '1px solid rgba(252,213,53,0.08)',
         display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 100,
       }}>
         {/* Header */}
-        <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(252,213,53,0.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(252,213,53,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#fcd535' }}>◎</div>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#fcd535', textShadow: '0 0 12px rgba(252,213,53,0.4)' }}>Admin Panel</span>
+        <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(252,213,53,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: THEME.radius.sm, flexShrink: 0,
+              background: 'linear-gradient(135deg, rgba(252,213,53,0.2), rgba(245,158,11,0.08))',
+              border: '1px solid rgba(252,213,53,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: THEME.color.gold,
+            }}>◎</div>
+            <div>
+              <div style={{ fontSize: THEME.font.md, fontWeight: 800, color: THEME.color.gold, textShadow: '0 0 12px rgba(252,213,53,0.4)', lineHeight: 1.2 }}>Admin Panel</div>
+              <div style={{ fontSize: 9, color: THEME.color.textFaint, letterSpacing: 0.6 }}>AlphaNodes</div>
+            </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '12px 0', overflowY: 'auto' }}>
+        <nav className="admin-scroll" style={{ flex: 1, padding: '14px 0', overflowY: 'auto' }}>
           {Object.entries(SIDEBAR).map(([section, items]) => (
-            <div key={section}>
-              <div style={{ padding: '10px 16px 4px', fontSize: 9, color: '#444', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            <div key={section} style={{ marginBottom: 6 }}>
+              <div style={{ padding: '10px 18px 6px', fontSize: 9, color: THEME.color.textFaint, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
                 {section}
               </div>
-              {items.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => setTab(item.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 9,
-                    width: '100%', padding: '9px 16px', textAlign: 'left',
-                    background: tab === item.id ? 'rgba(252,213,53,0.1)' : 'transparent',
-                    borderLeft: tab === item.id ? '2px solid #fcd535' : '2px solid transparent',
-                    border: 'none', color: tab === item.id ? '#fcd535' : '#667',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    textShadow: tab === item.id ? '0 0 10px rgba(252,213,53,0.3)' : 'none',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <span style={{ fontSize: 13 }}>{item.icon}</span>
-                  {item.label}
-                </button>
-              ))}
+              {items.map(item => {
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    className={`admin-nav-btn${active ? ' admin-nav-btn--active' : ''}`}
+                    onClick={() => setTab(item.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      width: '100%', padding: '9px 18px', textAlign: 'left',
+                      background: active ? 'rgba(252,213,53,0.1)' : 'transparent',
+                      borderLeft: active ? `2px solid ${THEME.color.gold}` : '2px solid transparent',
+                      border: 'none', borderLeftWidth: 2, borderLeftStyle: 'solid',
+                      color: active ? THEME.color.gold : THEME.color.textMuted,
+                      fontSize: THEME.font.base, fontWeight: 600, cursor: 'pointer',
+                      textShadow: active ? '0 0 10px rgba(252,213,53,0.3)' : 'none',
+                    }}
+                  >
+                    <span style={{ fontSize: 13, width: 14, textAlign: 'center' }}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
           ))}
         </nav>
 
         {/* System */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(252,213,53,0.08)' }}>
-          <div style={{ fontSize: 9, color: '#444', fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>SYSTEM</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#00c076', boxShadow: '0 0 8px #00c076' }} />
-            <span style={{ fontSize: 11, color: '#00c076', fontWeight: 700 }}>Connected</span>
-          </div>
+        <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(252,213,53,0.08)' }}>
+          <div style={{ fontSize: 9, color: THEME.color.textFaint, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>System</div>
+          <Badge color={THEME.color.green}>Connected</Badge>
           <button
+            className="admin-link"
             onClick={() => setAuthed(false)}
-            style={{ fontSize: 10, color: '#ff4d4d', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{ display: 'block', marginTop: 12, fontSize: THEME.font.xs, color: THEME.color.red, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}
           >
             Logout
           </button>
@@ -1197,16 +1358,18 @@ export default function AdminPanel() {
       </aside>
 
       {/* Main */}
-      <div style={{ marginLeft: 200, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ marginLeft: 208, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         {/* Message */}
         {msg && (
           <div style={{
-            position: 'fixed', top: 16, right: 16, zIndex: 200,
-            padding: '10px 16px', borderRadius: 8, fontSize: 13,
+            position: 'fixed', top: 18, right: 18, zIndex: 200,
+            padding: '11px 18px', borderRadius: THEME.radius.md, fontSize: THEME.font.md, fontWeight: 600,
             background: msg.err ? 'rgba(255,77,77,0.15)' : 'rgba(0,192,118,0.15)',
             border: `1px solid ${msg.err ? 'rgba(255,77,77,0.3)' : 'rgba(0,192,118,0.3)'}`,
-            color: msg.err ? '#ff4d4d' : '#00c076',
+            color: msg.err ? THEME.color.red : THEME.color.green,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            animation: 'adminFadeIn 0.2s ease both',
           }}>
             {msg.text}
           </div>
@@ -1214,57 +1377,33 @@ export default function AdminPanel() {
 
         {/* Overview */}
         {(tab === 'overview' || tab === 'earnings' || tab === 'referrals' || tab === 'cycles') && (
-          <div style={{ padding: '28px 32px' }}>
+          <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
 
             {/* Stat cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
-              {[
-                { label: 'Total Users', value: s.totalUsers || 0, icon: '◎', color: '#4e8ef7', bg: 'rgba(78,142,247,0.12)', border: 'rgba(78,142,247,0.2)' },
-                { label: 'Total Deposits', value: `${fmtBig(toUSDT(s.totalDeposited))} USDT`, icon: '$', color: '#00c076', bg: 'rgba(0,192,118,0.12)', border: 'rgba(0,192,118,0.2)' },
-                { label: 'Active AI', value: s.activeAI || s.activeInvestments || 0, icon: '↗', color: '#b56cff', bg: 'rgba(181,108,255,0.12)', border: 'rgba(181,108,255,0.2)' },
-                { label: 'Withdrawals', value: `${fmtBig(toUSDT(s.totalWithdrawn))} USDT`, icon: '⊠', color: '#fcd535', bg: 'rgba(252,213,53,0.12)', border: 'rgba(252,213,53,0.2)' },
-              ].map(card => (
-                <div key={card.label} style={{
-                  background: card.bg, border: `1px solid ${card.border}`,
-                  borderRadius: 12, padding: '20px',
-                  boxShadow: `0 4px 20px rgba(0,0,0,0.3)`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 42, height: 42, borderRadius: 10,
-                      background: card.bg, border: `1px solid ${card.border}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 18, color: card.color,
-                      boxShadow: `0 0 16px ${card.bg}`,
-                    }}>
-                      {card.icon}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>{card.value}</div>
-                      <div style={{ fontSize: 11, color: '#667', marginTop: 2 }}>{card.label}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <StatTile icon="◎" label="Total Users" color={THEME.color.blue2} value={s.totalUsers || 0} />
+              <StatTile icon="$" label="Total Deposits" color={THEME.color.green} value={`${fmtBig(toUSDT(s.totalDeposited))} USDT`} />
+              <StatTile icon="↗" label="Active AI" color={THEME.color.purple} value={s.activeAI || s.activeInvestments || 0} />
+              <StatTile icon="⊠" label="Withdrawals" color={THEME.color.gold} value={`${fmtBig(toUSDT(s.totalWithdrawn))} USDT`} />
             </div>
 
             {/* Active Investments */}
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: '#ccc' }}>Active Investments</div>
+              <div style={{ fontSize: THEME.font.lg, fontWeight: 700, marginBottom: 14, color: '#dfe3ea' }}>Active Investments</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                 {[
                   { label: 'AI Agents', value: s.activeAI || s.activeInvestments || 0, icon: '◈' },
                   { label: 'Stakes', value: s.activeStakes || 0, icon: '◎' },
                   { label: 'Copy Trades', value: s.activeCopyTrades || 0, icon: '⊡' },
                 ].map(item => (
-                  <div key={item.label} style={{
-                    background: 'rgba(14,17,24,0.8)', border: '1px solid rgba(252,213,53,0.08)',
-                    borderRadius: 12, padding: '24px', textAlign: 'center',
+                  <div key={item.label} className="admin-card admin-card--hoverable" style={{
+                    background: THEME.color.panelAlt, border: '1px solid rgba(252,213,53,0.08)',
+                    borderRadius: THEME.radius.lg, padding: '24px', textAlign: 'center',
                     backdropFilter: 'blur(8px)',
                   }}>
-                    <div style={{ fontSize: 26, color: '#fcd535', marginBottom: 8, textShadow: '0 0 16px rgba(252,213,53,0.4)' }}>{item.icon}</div>
+                    <div style={{ fontSize: 26, color: THEME.color.gold, marginBottom: 8, textShadow: '0 0 16px rgba(252,213,53,0.4)' }}>{item.icon}</div>
                     <div style={{ fontSize: 28, fontWeight: 900 }}>{item.value}</div>
-                    <div style={{ fontSize: 12, color: '#667', marginTop: 4 }}>{item.label}</div>
+                    <div style={{ fontSize: THEME.font.base, color: THEME.color.textMuted, marginTop: 4 }}>{item.label}</div>
                   </div>
                 ))}
               </div>
@@ -1272,8 +1411,8 @@ export default function AdminPanel() {
 
             {/* Platform Totals — with Vanta background */}
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: '#ccc' }}>Platform Totals</div>
-              <div ref={vantaRef} style={{ borderRadius: 12, overflow: 'hidden', position: 'relative', minHeight: 160 }}>
+              <div style={{ fontSize: THEME.font.lg, fontWeight: 700, marginBottom: 14, color: '#dfe3ea' }}>Platform Totals</div>
+              <div ref={vantaRef} style={{ borderRadius: THEME.radius.lg, overflow: 'hidden', position: 'relative', minHeight: 160, border: `1px solid ${THEME.color.border}` }}>
                 <div style={{
                   position: 'relative', zIndex: 1,
                   background: 'rgba(8,11,16,0.7)', backdropFilter: 'blur(4px)',
@@ -1281,16 +1420,16 @@ export default function AdminPanel() {
                 }}>
                   {[
                     { label: 'Total Trading Balance', value: `${fmtBig(toUSDT(s.totalTradingBalance || s.platformBalance))} USDT`, color: '#fff' },
-                    { label: 'Total Earnings Paid', value: `${fmtBig(toUSDT(s.totalEarningsPaid || s.totalWithdrawn))} USDT`, color: '#00c076' },
-                    { label: 'Total Staked', value: `${fmtBig(toUSDT(s.totalStaked))} USDT`, color: '#4e8ef7' },
-                    { label: 'Pending Withdrawals', value: s.pendingWithdrawals || 0, color: '#fcd535' },
+                    { label: 'Total Earnings Paid', value: `${fmtBig(toUSDT(s.totalEarningsPaid || s.totalWithdrawn))} USDT`, color: THEME.color.green },
+                    { label: 'Total Staked', value: `${fmtBig(toUSDT(s.totalStaked))} USDT`, color: THEME.color.blue2 },
+                    { label: 'Pending Withdrawals', value: s.pendingWithdrawals || 0, color: THEME.color.gold },
                   ].map((row, i, arr) => (
                     <div key={row.label} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '12px 0',
                       borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
                     }}>
-                      <span style={{ fontSize: 13, color: '#889' }}>{row.label}</span>
+                      <span style={{ fontSize: THEME.font.md, color: '#9aa3b5' }}>{row.label}</span>
                       <span style={{ fontSize: 14, fontWeight: 800, color: row.color }}>{row.value}</span>
                     </div>
                   ))}
@@ -1300,27 +1439,16 @@ export default function AdminPanel() {
 
             {/* Quick Actions */}
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: '#ccc' }}>Quick Actions</div>
+              <div style={{ fontSize: THEME.font.lg, fontWeight: 700, marginBottom: 14, color: '#dfe3ea' }}>Quick Actions</div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {[
                   { label: 'Manage Users', icon: '◎', action: () => setTab('accounts') },
                   { label: 'Withdrawals', icon: '⊠', action: () => setTab('withdrawals') },
                   { label: 'Refresh', icon: '↺', action: fetchStats },
                 ].map(btn => (
-                  <button
-                    key={btn.label}
-                    onClick={btn.action}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                      background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.2)',
-                      color: '#fcd535', cursor: 'pointer', transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(252,213,53,0.15)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(252,213,53,0.08)'}
-                  >
+                  <Button key={btn.label} variant="secondary" onClick={btn.action} style={{ color: THEME.color.gold, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.2)' }}>
                     <span>{btn.icon}</span> {btn.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -1329,22 +1457,23 @@ export default function AdminPanel() {
 
         {/* Accounts tab */}
         {tab === 'accounts' && (
-          <div style={{ padding: '28px 32px' }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>Accounts</div>
+          <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+            <SectionHeader title="Accounts" />
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <input
+                className="admin-input"
                 type="text" placeholder="Search by address..."
                 value={search} onChange={e => setSearch(e.target.value)}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(252,213,53,0.15)', borderRadius: 8, padding: '9px 14px', color: '#fff', fontSize: 13, outline: 'none' }}
+                style={inputStyle({ flex: 1, borderColor: 'rgba(252,213,53,0.15)' })}
               />
-              <button onClick={() => fetchAccounts(1)} style={{ padding: '9px 16px', background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.2)', borderRadius: 8, color: '#fcd535', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Refresh</button>
+              <Button variant="secondary" onClick={() => fetchAccounts(1)} style={{ color: THEME.color.gold, background: 'rgba(252,213,53,0.1)', border: '1px solid rgba(252,213,53,0.2)' }}>Refresh</Button>
             </div>
-            <div style={{ background: 'rgba(14,17,24,0.8)', borderRadius: 12, border: '1px solid rgba(252,213,53,0.08)', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <div style={tableWrapStyle}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: THEME.font.base }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(252,213,53,0.08)' }}>
+                  <tr style={{ borderBottom: `1px solid ${THEME.color.border}` }}>
                     {['Address', 'Balance (BNB)', 'Deposited', 'Withdrawn', 'Status', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#556', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>{h}</th>
+                      <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1352,42 +1481,41 @@ export default function AdminPanel() {
                   {filteredAccounts.map(acc => {
                     const bal = acc.balance || {};
                     return (
-                    <tr key={acc.address} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                      <td style={{ padding: '12px 16px', color: '#889', fontFamily: 'monospace' }}>
+                    <tr key={acc.address} className="admin-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <td style={{ ...tdStyle, color: '#9aa3b5', fontFamily: 'monospace' }}>
                         {acc.address?.slice(0, 8)}...{acc.address?.slice(-4)}
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#fcd535', fontWeight: 700 }}>
+                      <td style={{ ...tdStyle, color: THEME.color.gold, fontWeight: 700 }}>
                         {Number(bal.tradingBalance || 0).toFixed(4)}
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#00c076' }}>
+                      <td style={{ ...tdStyle, color: THEME.color.green }}>
                         {Number(bal.totalDeposited || 0).toFixed(4)}
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#ff4d4d' }}>
+                      <td style={{ ...tdStyle, color: THEME.color.red }}>
                         {Number(bal.totalWithdrawn || 0).toFixed(4)}
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{
-                          fontSize: 10, padding: '3px 8px', borderRadius: 4,
-                          background: acc.isSuspended ? 'rgba(255,77,77,0.12)' : 'rgba(0,192,118,0.12)',
-                          color: acc.isSuspended ? '#ff4d4d' : '#00c076',
-                        }}>{acc.isSuspended ? 'Suspended' : 'Active'}</span>
+                      <td style={tdStyle}>
+                        <Badge color={acc.isSuspended ? THEME.color.red : THEME.color.green}>{acc.isSuspended ? 'Suspended' : 'Active'}</Badge>
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={tdStyle}>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button
+                          <Button
+                            variant={acc.isSuspended ? 'success' : 'danger'} size="sm"
                             onClick={() => handleUpdateAccount(acc.address, 'isSuspended', !acc.isSuspended)}
                             disabled={loading === 'acc_' + acc.address}
-                            style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', background: acc.isSuspended ? 'rgba(0,192,118,0.1)' : 'rgba(255,77,77,0.1)', border: acc.isSuspended ? '1px solid rgba(0,192,118,0.2)' : '1px solid rgba(255,77,77,0.2)', color: acc.isSuspended ? '#00c076' : '#ff4d4d' }}
-                          >{acc.isSuspended ? 'Unsuspend' : 'Suspend'}</button>
-                          <button
+                            style={{ fontSize: 10, padding: '4px 10px' }}
+                          >{acc.isSuspended ? 'Unsuspend' : 'Suspend'}</Button>
+                          <Button
+                            variant="secondary" size="sm"
                             onClick={() => handleUpdateAccount(acc.address, 'withdrawalsBlocked', !acc.withdrawalsBlocked)}
                             disabled={loading === 'acc_' + acc.address}
-                            style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.15)', color: '#fcd535' }}
-                          >{acc.withdrawalsBlocked ? 'Unblock' : 'Block W.'}</button>
-                          <button
+                            style={{ fontSize: 10, padding: '4px 10px', color: THEME.color.gold, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.15)' }}
+                          >{acc.withdrawalsBlocked ? 'Unblock' : 'Block W.'}</Button>
+                          <Button
+                            variant="success" size="sm"
                             onClick={() => openFundsModal(acc.address)}
-                            style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', background: 'rgba(0,192,118,0.1)', border: '1px solid rgba(0,192,118,0.2)', color: '#00c076' }}
-                          >+ Funds</button>
+                            style={{ fontSize: 10, padding: '4px 10px' }}
+                          >+ Funds</Button>
                         </div>
                       </td>
                     </tr>
@@ -1395,51 +1523,55 @@ export default function AdminPanel() {
                   })}
                 </tbody>
               </table>
-              {filteredAccounts.length === 0 && <div style={{ padding: 24, color: '#556', fontSize: 13, textAlign: 'center' }}>No accounts found</div>}
+              {filteredAccounts.length === 0 && <EmptyState icon="◎" title="No accounts found" />}
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button onClick={() => fetchAccounts(page - 1)} disabled={page <= 1} style={{ padding: '6px 14px', background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.15)', borderRadius: 6, color: '#fcd535', fontSize: 12, cursor: 'pointer' }}>Previous</button>
-              <span style={{ padding: '6px 14px', fontSize: 12, color: '#556' }}>Page {page}</span>
-              <button onClick={() => fetchAccounts(page + 1)} disabled={accounts.length < 20} style={{ padding: '6px 14px', background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.15)', borderRadius: 6, color: '#fcd535', fontSize: 12, cursor: 'pointer' }}>Next</button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, alignItems: 'center' }}>
+              <Button variant="secondary" size="sm" onClick={() => fetchAccounts(page - 1)} disabled={page <= 1} style={{ color: THEME.color.gold, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.15)' }}>Previous</Button>
+              <span style={{ padding: '6px 14px', fontSize: THEME.font.base, color: THEME.color.textMuted }}>Page {page}</span>
+              <Button variant="secondary" size="sm" onClick={() => fetchAccounts(page + 1)} disabled={accounts.length < 20} style={{ color: THEME.color.gold, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.15)' }}>Next</Button>
             </div>
           </div>
         )}
 
         {/* Withdrawals tab */}
         {tab === 'withdrawals' && (
-          <div style={{ padding: '28px 32px' }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>Withdrawals</div>
+          <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+            <SectionHeader title="Withdrawals" />
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               {['pending', 'completed', 'rejected'].map(s => (
-                <button key={s} onClick={() => setWStatus(s)} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: wStatus === s ? '#fcd535' : 'rgba(252,213,53,0.08)', color: wStatus === s ? '#0d0d0d' : '#667', border: wStatus === s ? 'none' : '1px solid rgba(252,213,53,0.15)' }}>
+                <Button
+                  key={s} size="sm" onClick={() => setWStatus(s)}
+                  variant={wStatus === s ? 'primary' : 'secondary'}
+                  style={wStatus === s ? {} : { color: THEME.color.textMuted, background: 'rgba(252,213,53,0.08)', border: '1px solid rgba(252,213,53,0.15)' }}
+                >
                   {s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
+                </Button>
               ))}
             </div>
-            <div style={{ background: 'rgba(14,17,24,0.8)', borderRadius: 12, border: '1px solid rgba(252,213,53,0.08)', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <div style={tableWrapStyle}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: THEME.font.base }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(252,213,53,0.08)' }}>
+                  <tr style={{ borderBottom: `1px solid ${THEME.color.border}` }}>
                     {['Address', 'Amount (BNB)', 'USDT Value', 'Date', 'Status', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#556', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>{h}</th>
+                      <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {withdrawals.map(w => (
-                    <tr key={w._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                      <td style={{ padding: '12px 16px', color: '#889', fontFamily: 'monospace' }}>{w.address?.slice(0, 8)}...{w.address?.slice(-4)}</td>
-                      <td style={{ padding: '12px 16px', color: '#fcd535', fontWeight: 700 }}>{Number(w.amount || 0).toFixed(4)}</td>
-                      <td style={{ padding: '12px 16px', color: '#00c076' }}>{toUSDT(w.amount)} USDT</td>
-                      <td style={{ padding: '12px 16px', color: '#556' }}>{new Date(w.createdAt).toLocaleDateString()}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, background: w.status === 'pending' ? 'rgba(252,213,53,0.12)' : w.status === 'completed' ? 'rgba(0,192,118,0.12)' : 'rgba(255,77,77,0.12)', color: w.status === 'pending' ? '#fcd535' : w.status === 'completed' ? '#00c076' : '#ff4d4d' }}>{w.status}</span>
+                    <tr key={w._id} className="admin-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <td style={{ ...tdStyle, color: '#9aa3b5', fontFamily: 'monospace' }}>{w.address?.slice(0, 8)}...{w.address?.slice(-4)}</td>
+                      <td style={{ ...tdStyle, color: THEME.color.gold, fontWeight: 700 }}>{Number(w.amount || 0).toFixed(4)}</td>
+                      <td style={{ ...tdStyle, color: THEME.color.green }}>{toUSDT(w.amount)} USDT</td>
+                      <td style={{ ...tdStyle, color: THEME.color.textFaint }}>{new Date(w.createdAt).toLocaleDateString()}</td>
+                      <td style={tdStyle}>
+                        <Badge color={w.status === 'pending' ? THEME.color.gold : w.status === 'completed' ? THEME.color.green : THEME.color.red}>{w.status}</Badge>
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={tdStyle}>
                         {w.status === 'pending' && (
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => handleUpdateWithdrawal(w._id, 'approved')} disabled={loading === 'w_' + w._id} style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', background: 'rgba(0,192,118,0.1)', border: '1px solid rgba(0,192,118,0.2)', color: '#00c076' }}>Approve</button>
-                            <button onClick={() => handleUpdateWithdrawal(w._id, 'rejected')} disabled={loading === 'w_' + w._id} style={{ fontSize: 10, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.2)', color: '#ff4d4d' }}>Reject</button>
+                            <Button variant="success" size="sm" onClick={() => handleUpdateWithdrawal(w._id, 'approved')} disabled={loading === 'w_' + w._id} style={{ fontSize: 10, padding: '4px 10px' }}>Approve</Button>
+                            <Button variant="danger" size="sm" onClick={() => handleUpdateWithdrawal(w._id, 'rejected')} disabled={loading === 'w_' + w._id} style={{ fontSize: 10, padding: '4px 10px' }}>Reject</Button>
                           </div>
                         )}
                       </td>
@@ -1447,7 +1579,7 @@ export default function AdminPanel() {
                   ))}
                 </tbody>
               </table>
-              {withdrawals.length === 0 && <div style={{ padding: 24, color: '#556', fontSize: 13, textAlign: 'center' }}>No {wStatus} withdrawals</div>}
+              {withdrawals.length === 0 && <EmptyState icon="⊠" title={`No ${wStatus} withdrawals`} />}
             </div>
           </div>
         )}
@@ -1462,11 +1594,9 @@ export default function AdminPanel() {
 
         {/* Placeholder tabs */}
         {['copytrades'].includes(tab) && (
-          <div style={{ padding: '28px 32px' }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>Copy Trades</div>
-            <div style={{ background: 'rgba(14,17,24,0.8)', borderRadius: 12, border: '1px solid rgba(252,213,53,0.08)', padding: 32, textAlign: 'center', color: '#445' }}>
-              Coming soon
-            </div>
+          <div className="admin-tab-panel" style={{ padding: '28px 32px' }}>
+            <SectionHeader title="Copy Trades" />
+            <EmptyState icon="⊡" title="Coming soon" />
           </div>
         )}
       </div>
@@ -1480,57 +1610,55 @@ export default function AdminPanel() {
         }} onClick={closeFundsModal}>
           <div style={{
             background: '#0e1118', border: '1px solid rgba(252,213,53,0.2)',
-            borderRadius: 14, padding: '28px 28px', width: 380,
-            boxShadow: '0 0 40px rgba(0,0,0,0.6)',
+            borderRadius: THEME.radius.lg, padding: '28px 28px', width: 380,
+            boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+            animation: 'adminFadeIn 0.22s cubic-bezier(0.22,1,0.36,1) both',
           }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>Add / Deduct Funds</div>
-            <div style={{ fontSize: 11, color: '#556', marginBottom: 20, fontFamily: 'monospace' }}>
+            <div style={{ fontSize: THEME.font.lg, fontWeight: 800, marginBottom: 4 }}>Add / Deduct Funds</div>
+            <div style={{ fontSize: THEME.font.sm, color: THEME.color.textFaint, marginBottom: 20, fontFamily: 'monospace' }}>
               {fundsModal.address}
             </div>
 
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: '#667', marginBottom: 6 }}>Balance Field</div>
-              <select
-                value={fundsField}
-                onChange={e => setFundsField(e.target.value)}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(252,213,53,0.2)', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none' }}
-              >
-                <option value="tradingBalance">Trading Balance</option>
-                <option value="aiEarnings">AI Earnings</option>
-                <option value="stakingEarnings">Staking Earnings</option>
-                <option value="referralEarnings">Referral Earnings</option>
-              </select>
+            <div style={{ marginBottom: 14 }}>
+              <FormField label="Balance Field">
+                <select
+                  className="admin-input"
+                  value={fundsField}
+                  onChange={e => setFundsField(e.target.value)}
+                  style={inputStyle({ border: '1px solid rgba(252,213,53,0.2)' })}
+                >
+                  <option value="tradingBalance">Trading Balance</option>
+                  <option value="aiEarnings">AI Earnings</option>
+                  <option value="stakingEarnings">Staking Earnings</option>
+                  <option value="referralEarnings">Referral Earnings</option>
+                </select>
+              </FormField>
             </div>
 
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#667', marginBottom: 6 }}>Amount (BNB) — negative to deduct</div>
-              <input
-                type="number" step="any" placeholder="e.g. 0.5 or -0.1"
-                value={fundsAmount}
-                onChange={e => setFundsAmount(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddFunds()}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(252,213,53,0.2)', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-              />
+              <FormField label="Amount (BNB) — negative to deduct">
+                <input
+                  className="admin-input"
+                  type="number" step="any" placeholder="e.g. 0.5 or -0.1"
+                  value={fundsAmount}
+                  onChange={e => setFundsAmount(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddFunds()}
+                  style={inputStyle({ border: '1px solid rgba(252,213,53,0.2)' })}
+                />
+              </FormField>
             </div>
 
             {fundsMsg && (
-              <div style={{ fontSize: 12, color: '#ff4d4d', marginBottom: 10 }}>{fundsMsg}</div>
+              <div style={{ fontSize: THEME.font.base, color: THEME.color.red, marginBottom: 10 }}>{fundsMsg}</div>
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button
-                onClick={handleAddFunds}
-                disabled={loading === 'funds'}
-                style={{ flex: 1, background: '#00c076', color: '#0d0d0d', fontWeight: 800, border: 'none', borderRadius: 8, padding: '11px', cursor: 'pointer', fontSize: 13 }}
-              >
+              <Button variant="success" onClick={handleAddFunds} disabled={loading === 'funds'} style={{ flex: 1 }}>
                 {loading === 'funds' ? 'Sending...' : 'Confirm'}
-              </button>
-              <button
-                onClick={closeFundsModal}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: '#889', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '11px', cursor: 'pointer', fontSize: 13 }}
-              >
+              </Button>
+              <Button variant="secondary" onClick={closeFundsModal} style={{ flex: 1 }}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>
