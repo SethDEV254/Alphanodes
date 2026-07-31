@@ -18,9 +18,9 @@ function IconBox({ color, size = 36, children }) {
 }
 
 const COMMISSION_LEVELS = [
-  { level: 1, rate: '15%', desc: 'Direct referrals — daily AI earnings', color: '#fcd535' },
-  { level: 2, rate: '10%', desc: 'Indirect referrals — daily AI earnings', color: '#ff8c00' },
-  { level: 3, rate: '5%',  desc: 'Tier 3 referrals — daily AI earnings', color: '#a78bfa' },
+  { level: 1, rate: '10%', desc: 'Direct referrals — daily AI earnings', color: '#fcd535' },
+  { level: 2, rate: '5%',  desc: 'Indirect referrals — daily AI earnings', color: '#ff8c00' },
+  { level: 3, rate: '2%',  desc: 'Tier 3 referrals — daily AI earnings', color: '#a78bfa' },
 ];
 
 const HOW_IT_WORKS = [
@@ -46,7 +46,7 @@ const HOW_IT_WORKS = [
   },
   {
     step: '03', color: '#00c076', title: 'Earn Commission',
-    desc: 'Automatically earn 15% of all their AI earnings in real time, forever',
+    desc: 'Automatically earn up to 10% of all their AI earnings in real time, forever',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
@@ -114,7 +114,7 @@ export default function Affiliate() {
           Refer &amp; <span style={{ color: '#fcd535' }}>Earn Forever</span>
         </h2>
         <p style={{ fontSize: 13, color: '#555', lineHeight: 1.6, margin: 0, maxWidth: 500 }}>
-          Share your unique link. Earn up to 15% commission on your referrals' AI earnings in real time — automatically, no limits.
+          Share your unique link. Earn up to 10% commission on your referrals' AI earnings in real time — automatically, no limits.
         </p>
       </div>
 
@@ -167,7 +167,7 @@ export default function Affiliate() {
           <div style={{ fontSize: 9, color: '#888', textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 700, marginBottom: 4 }}>
             Commission
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#a78bfa', lineHeight: 1 }}>15%</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#a78bfa', lineHeight: 1 }}>10%</div>
           <div style={{ fontSize: 9, color: '#a78bfa', marginTop: 3, fontWeight: 600 }}>L1 direct</div>
         </div>
       </div>
@@ -184,7 +184,7 @@ export default function Affiliate() {
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Your Referral Link</div>
             <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
-              Share this — earn 15%/10%/5% of referrals' AI earnings in real time
+              Share this — earn 10%/5%/2% of referrals' AI earnings in real time
             </div>
           </div>
         </div>
