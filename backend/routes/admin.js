@@ -9,6 +9,7 @@ const Trader = require('../models/Trader');
 const PayoutBatch = require('../models/PayoutBatch');
 const { AI_PACKAGES } = require('../config/aiPackages');
 const { computeDailyPayouts, AFFILIATE_RATES } = require('../services/payout');
+const { pendingRoi, isCapped } = require('../services/aiAccrual');
 
 let contractService = null;
 function getContractService() {
@@ -390,19 +391,15 @@ router.patch('/investments/:id', auth, async (req, res) => {
         description: `Admin cancelled investment — ${investment.packageName} package`,
       });
     } else {
-      const now = Date.now();
-      const elapsed = now - investment.startDate.getTime();
-      const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-      const accrued = (investment.amount * investment.dailyRateBps * days) / 10000;
-      const pending = Math.max(0, accrued - (investment.claimedEarnings || 0));
+      const pending = pendingRoi(investment);
 
       investment.claimedEarnings = (investment.claimedEarnings || 0) + pending;
-      investment.status = 'claimed';
-      investment.endDate = new Date();
+      investment.totalPaidOut = (investment.totalPaidOut || 0) + pending;
+      investment.status = 'completed';
       await investment.save();
 
       if (balance) {
-        balance.tradingBalance = (balance.tradingBalance || 0) + investment.amount + pending;
+        balance.tradingBalance = (balance.tradingBalance || 0) + pending;
         balance.aiEarnings = (balance.aiEarnings || 0) + pending;
         await balance.save();
       }
@@ -410,7 +407,7 @@ router.patch('/investments/:id', auth, async (req, res) => {
       await Transaction.create({
         address: investment.address,
         type: 'ai_claim',
-        amount: pending + investment.amount,
+        amount: pending,
         description: `Admin force-completed investment — ${investment.packageName} package`,
       });
     }
@@ -631,12 +628,18 @@ router.post('/payouts/execute', auth, async (req, res) => {
       return res.json({ success: false, error: chainErr.message });
     }
 
-    // Lock in claimedEarnings for exactly what was just paid, so manual claim/compound
-    // (which reads the same field) can never re-pay this same ROI.
+    // Lock in claimedEarnings/totalPaidOut for exactly what was just paid, so manual
+    // claim/compound (which reads the same fields) can never re-pay this same ROI,
+    // and flip to 'completed' the moment a position's 3x-of-principal cap is reached.
     await Promise.all(
-      preview.investmentPayouts.map((p) =>
-        AiInvestment.findByIdAndUpdate(p.investmentId, { $inc: { claimedEarnings: p.roi } })
-      )
+      preview.investmentPayouts.map(async (p) => {
+        const inv = await AiInvestment.findById(p.investmentId);
+        if (!inv) return;
+        inv.claimedEarnings = (inv.claimedEarnings || 0) + p.roi;
+        inv.totalPaidOut = (inv.totalPaidOut || 0) + p.roi;
+        if (isCapped(inv)) inv.status = 'completed';
+        await inv.save();
+      })
     );
 
     // Transaction log entries for the app's activity feed (informational — the real

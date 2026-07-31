@@ -1,18 +1,8 @@
 const AiInvestment = require('../models/AiInvestment');
 const User = require('../models/User');
+const { pendingRoi } = require('./aiAccrual');
 
 const AFFILIATE_RATES = [0.10, 0.05, 0.02]; // level 1, 2, 3 — % of the downline's ROI this round
-
-// Same accrual formula as the manual claim/compound routes — keeping this identical is
-// what lets automatic on-chain payouts and manual claiming share one `claimedEarnings`
-// counter without ever double-paying the same accrued ROI.
-function pendingRoi(inv) {
-  const now = Math.min(Date.now(), inv.endDate.getTime());
-  const elapsed = now - inv.startDate.getTime();
-  const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-  const accrued = (inv.amount * inv.dailyRateBps * days) / 10000;
-  return Math.max(0, accrued - (inv.claimedEarnings || 0));
-}
 
 // Computes what every wallet is currently owed: each investor's pending AI ROI, plus
 // 3-tier affiliate commissions on that ROI paid up their referral chain. Pure read —

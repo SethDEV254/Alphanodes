@@ -4,6 +4,7 @@ const Balance = require('../models/Balance');
 const Transaction = require('../models/Transaction');
 const Setting = require('../models/Setting');
 const { AI_PACKAGES } = require('../config/aiPackages');
+const { pendingRoi, isCapped } = require('../services/aiAccrual');
 
 // Merges admin-configured rate overrides (Setting: aiPackageRates) onto the base packages
 async function getPackageRates() {
@@ -77,15 +78,14 @@ router.post('/', async (req, res) => {
     const maxBps = Math.round(pkg.rateMax * 100);
     const dailyRateBps = minBps >= maxBps ? minBps : minBps + Math.floor(Math.random() * (maxBps - minBps + 1));
 
-    const endDate = new Date(Date.now() + pkg.durationDays * 24 * 60 * 60 * 1000);
     const investment = await AiInvestment.create({
       address: addr,
       packageId: pkg.id,
       packageName: pkg.name,
       amount,
+      principal: amount,
       dailyRateBps,
-      durationDays: pkg.durationDays,
-      endDate,
+      durationDays: pkg.durationDays, // informational only — accrual/completion is 3x-of-principal, not time-based
       coin: coin || 'BNB',
       txHash: txHash || '',
     });
@@ -117,28 +117,21 @@ router.post('/claim', async (req, res) => {
     const addr = address.toLowerCase();
     const investment = await AiInvestment.findOne({ _id: investmentId, address: addr });
     if (!investment) return res.json({ success: false, error: 'Investment not found' });
-    if (investment.status === 'claimed') return res.json({ success: false, error: 'Already claimed' });
+    if (investment.status !== 'active') return res.json({ success: false, error: 'Investment is not active' });
 
-    const now = Math.min(Date.now(), investment.endDate.getTime());
-    const elapsed = now - investment.startDate.getTime();
-    const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-    const accrued = (investment.amount * investment.dailyRateBps * days) / 10000;
-    const pending = Math.max(0, accrued - investment.claimedEarnings);
-
+    const pending = pendingRoi(investment);
     if (pending <= 0) return res.json({ success: false, error: 'Nothing to claim yet' });
 
     investment.claimedEarnings += pending;
-    const isComplete = Date.now() >= investment.endDate.getTime();
-    if (isComplete) investment.status = 'claimed';
+    investment.totalPaidOut = (investment.totalPaidOut || 0) + pending;
+    const isComplete = isCapped(investment);
+    if (isComplete) investment.status = 'completed';
     await investment.save();
 
     const balance = await Balance.findOne({ address: addr });
     if (balance) {
       balance.aiEarnings = (balance.aiEarnings || 0) + pending;
       balance.tradingBalance = (balance.tradingBalance || 0) + pending;
-      if (isComplete) {
-        balance.tradingBalance += investment.amount; // return principal
-      }
       await balance.save();
     }
 
@@ -167,19 +160,14 @@ router.post('/compound', async (req, res) => {
     if (!investment) return res.json({ success: false, error: 'Investment not found' });
     if (investment.status !== 'active') return res.json({ success: false, error: 'Investment not active' });
 
-    const now = Math.min(Date.now(), investment.endDate.getTime());
-    const elapsed = now - investment.startDate.getTime();
-    const days = elapsed / (1000 * 60 * 60 * 24);
-    const accrued = (investment.amount * investment.dailyRateBps * days) / 10000;
-    const pending = Math.max(0, accrued - investment.claimedEarnings);
-
+    const pending = pendingRoi(investment);
     if (pending <= 0) return res.json({ success: false, error: 'Nothing to compound yet' });
 
+    // Reinvested, not paid out — totalPaidOut (the 3x cap basis) is untouched.
     const newAmount = investment.amount + pending;
     investment.amount = newAmount;
     investment.claimedEarnings = 0;
     investment.startDate = new Date();
-    investment.endDate = new Date(Date.now() + investment.durationDays * 24 * 60 * 60 * 1000);
     await investment.save();
 
     const balance = await Balance.findOne({ address: addr });

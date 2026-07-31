@@ -28,8 +28,8 @@ const ICONS = { core: '◎', max: '⬡' };
 
 // Hardcoded defaults — overridden at runtime by admin-configured rates from /api/ai-investment/packages
 const DEFAULT_PACKAGES = [
-  { _id: 'core', contractId: 1, name: 'Core', rateMin: 0.5, rateMax: 1.0, minUsd: 100,  maxUsd: 999,  duration: 60 },
-  { _id: 'max',  contractId: 2, name: 'Max',  rateMin: 1.0, rateMax: 1.5, minUsd: 1000, maxUsd: null, duration: 90 },
+  { _id: 'core', contractId: 1, name: 'Core', rateMin: 0.5, rateMax: 1.0, minUsd: 100,  maxUsd: 999 },
+  { _id: 'max',  contractId: 2, name: 'Max',  rateMin: 1.0, rateMax: 1.5, minUsd: 1000, maxUsd: null },
 ];
 const withAvgRate = (pkgs) => pkgs.map(p => ({ ...p, dailyRate: Number(((p.rateMin + p.rateMax) / 2).toFixed(4)) }));
 
@@ -55,15 +55,6 @@ const COINS = [
   { symbol: 'SUI',  label: 'Sui',         color: '#4da2ff' },
   { symbol: 'TRX',  label: 'TRON',        color: '#ff0013' },
 ];
-
-function countdown(endDate) {
-  const diff = Math.max(0, new Date(endDate).getTime() - Date.now());
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-  return `${d}d ${h}h ${m}m ${s}s`;
-}
 
 function CoinDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -252,7 +243,6 @@ export default function AIAgents() {
         packageId: selected._id,
         packageName: selected.name,
         dailyRate: selected.dailyRate,
-        duration: selected.duration,
         amount: bnbAmt,
         coin: selectedCoin.symbol,
       });
@@ -318,7 +308,7 @@ export default function AIAgents() {
   const usdAmt = parseFloat(amount) || 0;
   const bnbEquiv = usdAmt > 0 ? (usdAmt / bnbPrice).toFixed(6) : null;
   const dailyEst = selected && usdAmt ? (usdAmt * selected.dailyRate / 100).toFixed(2) : null;
-  const totalEst = selected && usdAmt ? (usdAmt * selected.dailyRate / 100 * selected.duration).toFixed(2) : null;
+  const maxPayoutEst = selected && usdAmt ? (usdAmt * 3).toFixed(2) : null;
 
   return (
     <div>
@@ -382,7 +372,7 @@ export default function AIAgents() {
                         {fmtUsd(pkg.minUsd)} – {pkg.maxUsd !== null ? fmtUsd(pkg.maxUsd) : 'No max'}
                       </span>
                       <span>·</span>
-                      <span>{pkg.duration} days</span>
+                      <span>3x payout cap</span>
                     </div>
                   </div>
                 </div>
@@ -441,7 +431,7 @@ export default function AIAgents() {
                   {ICONS[selected._id]} {selected.name}
                 </div>
                 <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
-                  {selected.rateMin}–{selected.rateMax}%/day · {selected.duration}d
+                  {selected.rateMin}–{selected.rateMax}%/day · 3x cap
                 </div>
               </div>
               <button
@@ -526,8 +516,8 @@ export default function AIAgents() {
                     padding: '10px 12px', borderRadius: 10,
                     background: 'rgba(252,213,53,0.06)', border: '1px solid rgba(252,213,53,0.12)',
                   }}>
-                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Total ({selected.duration}d, avg)</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#fcd535' }}>+${totalEst}</div>
+                    <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Max Payout (3x cap)</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#fcd535' }}>+${maxPayoutEst}</div>
                   </div>
                 </div>
               )}
@@ -555,27 +545,29 @@ export default function AIAgents() {
           // tick is read here so React re-renders this map every second
           const now = Date.now() + (tick * 0);
 
-          // Normalize date fields — backend uses startDate/endDate, on-chain uses startTime/endTime (unix s)
+          // Normalize date fields — backend uses startDate, on-chain uses startTime (unix s)
           const start = inv.startDate ? new Date(inv.startDate).getTime()
             : inv.startTime ? inv.startTime * 1000
             : new Date(inv.createdAt).getTime();
-          const durationMs = (inv.duration || 30) * 86400000;
-          const end = inv.endDate ? new Date(inv.endDate).getTime()
-            : inv.endTime ? inv.endTime * 1000
-            : start + durationMs;
 
           // Normalize rate — backend: dailyRate is % (1.0 = 1%); on-chain: dailyRateBps (100 = 1%)
           const rate = inv.dailyRate ? inv.dailyRate / 100 : (inv.dailyRateBps || 0) / 10000;
 
-          // Real-time pending: DB earnedAmount + live accumulation since last cron tick
-          const lastCron = inv.lastCronAt ? new Date(inv.lastCronAt).getTime() : start;
-          const sinceCronDays = Math.max(0, (now - lastCron) / 86400000);
-          const liveExtra = sinceCronDays * rate * inv.amount;
-          const pending = Math.max(0, (inv.earnedAmount || 0) + liveExtra - (inv.claimedEarnings || 0));
+          // 3x-of-principal lifetime cap — mirrors backend/services/aiAccrual.js pendingRoi()
+          const principal = inv.principal || inv.amount;
+          const cap = principal * 3;
+          const totalPaidOut = inv.totalPaidOut || 0;
+          const remainingCap = Math.max(0, cap - totalPaidOut);
+
+          // Live per-second accrual since start, capped by claimedEarnings and the remaining cap
+          const elapsedDays = Math.max(0, (now - start) / 86400000);
+          const accruedSinceStart = elapsedDays * rate * inv.amount;
+          const uncappedPending = Math.max(0, accruedSinceStart - (inv.claimedEarnings || 0));
+          const pending = Math.min(uncappedPending, remainingCap);
           // Per-second rate for display
           const perSec = rate * inv.amount / 86400;
 
-          const progress = Math.min(100, ((now - start) / (end - start)) * 100);
+          const progress = cap > 0 ? Math.min(100, (totalPaidOut / cap) * 100) : 0;
           const coinInfo = COINS.find(c => c.symbol === inv.coin) || COINS[0];
           const isCompounding = loading === `compound-${inv._id}`;
           const isClaiming = loading === inv._id;
@@ -614,9 +606,9 @@ export default function AIAgents() {
               {/* Progress + countdown */}
               <div style={{ marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <span style={{ fontSize: 10, color: '#444' }}>{progress.toFixed(1)}% complete</span>
+                  <span style={{ fontSize: 10, color: '#444' }}>{progress.toFixed(1)}% of 3x cap</span>
                   <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#666', fontWeight: 700 }}>
-                    {countdown(new Date(end))}
+                    {remainingCap.toFixed(4)} BNB left
                   </span>
                 </div>
                 <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
