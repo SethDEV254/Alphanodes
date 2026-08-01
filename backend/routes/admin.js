@@ -8,7 +8,7 @@ const Setting = require('../models/Setting');
 const Trader = require('../models/Trader');
 const PayoutBatch = require('../models/PayoutBatch');
 const { AI_PACKAGES } = require('../config/aiPackages');
-const { computeDailyPayouts, AFFILIATE_RATES } = require('../services/payout');
+const { computeDailyPayouts, AFFILIATE_RATES, CATEGORIES } = require('../services/payout');
 const { pendingRoi, isCapped } = require('../services/aiAccrual');
 
 let contractService = null;
@@ -571,14 +571,28 @@ async function getContractBnbBalance() {
   }
 }
 
+// Merges every category's recipients into one address->amount view — used for the
+// admin summary list/total, which doesn't need the per-category split to display.
+function flattenRecipients(categories) {
+  const totals = new Map();
+  for (const category of CATEGORIES) {
+    for (const r of categories[category].recipients) {
+      totals.set(r.address, (totals.get(r.address) || 0) + r.amount);
+    }
+  }
+  return Array.from(totals.entries()).map(([address, amount]) => ({ address, amount }));
+}
+
 // GET /api/admin/payouts/preview?password= — what everyone is currently owed, no state change
 router.get('/payouts/preview', auth, async (req, res) => {
   try {
     const [preview, contractBalance] = await Promise.all([computeDailyPayouts(), getContractBnbBalance()]);
+    const recipients = flattenRecipients(preview.categories);
     res.json({
       success: true,
       data: {
-        recipients: preview.recipients,
+        recipients,
+        categories: preview.categories,
         breakdown: preview.breakdown,
         totalAmount: preview.totalAmount,
         contractBalance,
@@ -591,11 +605,16 @@ router.get('/payouts/preview', auth, async (req, res) => {
   }
 });
 
-// POST /api/admin/payouts/execute?password= — sends the real on-chain batch payout
+// POST /api/admin/payouts/execute?password= — sends the real on-chain batch payouts.
+// Executes one batchPayout() transaction PER CATEGORY (ROI, then L1/L2/L3 affiliate
+// commissions) instead of one combined call, so each is separately traceable on-chain
+// (its own tx hash/events) as exactly what it paid for — using the existing, unmodified
+// contract's already-live batchPayout() function, just called more than once.
 router.post('/payouts/execute', auth, async (req, res) => {
   try {
     const preview = await computeDailyPayouts();
-    if (!preview.recipients.length) {
+    const pendingCategories = CATEGORIES.filter((c) => preview.categories[c].recipients.length > 0);
+    if (!pendingCategories.length) {
       return res.json({ success: false, error: 'Nothing pending to pay out' });
     }
 
@@ -610,66 +629,80 @@ router.post('/payouts/execute', auth, async (req, res) => {
     const svc = getContractService();
     if (!svc) return res.json({ success: false, error: 'Contract service not configured (missing CONTRACT_ADDRESS or OWNER_PRIVATE_KEY)' });
 
-    let txHash;
-    try {
-      txHash = await svc.batchPayout(
-        preview.recipients.map((r) => r.address),
-        preview.recipients.map((r) => r.amount)
-      );
-    } catch (chainErr) {
+    const results = {};
+
+    for (const category of pendingCategories) {
+      const { recipients, totalAmount: categoryTotal } = preview.categories[category];
+      const investmentIds = category === 'roi' ? preview.investmentPayouts.map((p) => p.investmentId) : [];
+
+      let txHash;
+      try {
+        txHash = await svc.batchPayout(
+          recipients.map((r) => r.address),
+          recipients.map((r) => r.amount)
+        );
+      } catch (chainErr) {
+        await PayoutBatch.create({
+          category, totalAmount: categoryTotal, recipientCount: recipients.length,
+          recipients, investmentIds, status: 'failed', error: chainErr.message,
+        });
+        results[category] = { success: false, error: chainErr.message };
+
+        // If the ROI batch itself fails, nothing was paid this round — stop here,
+        // same as before. An affiliate batch failing doesn't block the rest or the
+        // investor bookkeeping below (that money already moved on-chain regardless).
+        if (category === 'roi') {
+          return res.json({ success: false, error: chainErr.message, data: { results } });
+        }
+        continue;
+      }
+
       await PayoutBatch.create({
-        totalAmount: preview.totalAmount,
-        recipientCount: preview.recipients.length,
-        recipients: preview.recipients,
-        investmentIds: preview.investmentPayouts.map((p) => p.investmentId),
-        status: 'failed',
-        error: chainErr.message,
+        category, totalAmount: categoryTotal, recipientCount: recipients.length,
+        recipients, investmentIds, txHash, status: 'executed',
       });
-      return res.json({ success: false, error: chainErr.message });
+      results[category] = { success: true, txHash, totalAmount: categoryTotal, recipientCount: recipients.length };
+
+      if (category === 'roi') {
+        // Lock in claimedEarnings/totalPaidOut for exactly what was just paid, so manual
+        // claim/compound (which reads the same fields) can never re-pay this same ROI,
+        // and flip to 'completed' the moment a position's 3x-of-principal cap is reached.
+        await Promise.all(
+          preview.investmentPayouts.map(async (p) => {
+            const inv = await AiInvestment.findById(p.investmentId);
+            if (!inv) return;
+            inv.claimedEarnings = (inv.claimedEarnings || 0) + p.roi;
+            inv.totalPaidOut = (inv.totalPaidOut || 0) + p.roi;
+            if (isCapped(inv)) inv.status = 'completed';
+            await inv.save();
+          })
+        );
+
+        await Transaction.insertMany(
+          preview.breakdown.map((d) => ({
+            address: d.address, type: 'ai_claim', amount: d.roi, txHash,
+            description: `Daily ${d.packageName} ROI (on-chain)`,
+          }))
+        );
+      } else {
+        const level = category.slice(-1);
+        await Transaction.insertMany(
+          preview.breakdown.flatMap((d) =>
+            d.affiliates
+              .filter((a) => String(a.level) === level)
+              .map((a) => ({
+                address: a.address, type: 'referral', amount: a.commission, txHash,
+                description: `Level ${a.level} affiliate commission from ${d.address} (on-chain)`,
+              }))
+          )
+        );
+      }
     }
 
-    // Lock in claimedEarnings/totalPaidOut for exactly what was just paid, so manual
-    // claim/compound (which reads the same fields) can never re-pay this same ROI,
-    // and flip to 'completed' the moment a position's 3x-of-principal cap is reached.
-    await Promise.all(
-      preview.investmentPayouts.map(async (p) => {
-        const inv = await AiInvestment.findById(p.investmentId);
-        if (!inv) return;
-        inv.claimedEarnings = (inv.claimedEarnings || 0) + p.roi;
-        inv.totalPaidOut = (inv.totalPaidOut || 0) + p.roi;
-        if (isCapped(inv)) inv.status = 'completed';
-        await inv.save();
-      })
-    );
-
-    // Transaction log entries for the app's activity feed (informational — the real
-    // money movement already happened on-chain, this doesn't touch off-chain balances).
-    await Transaction.insertMany(
-      preview.breakdown.flatMap((d) => {
-        const rows = [{
-          address: d.address, type: 'ai_claim', amount: d.roi, txHash,
-          description: `Daily ${d.packageName} ROI (on-chain)`,
-        }];
-        d.affiliates.forEach((a) => rows.push({
-          address: a.address, type: 'referral', amount: a.commission, txHash,
-          description: `Level ${a.level} affiliate commission from ${d.address} (on-chain)`,
-        }));
-        return rows;
-      })
-    );
-
-    const batch = await PayoutBatch.create({
-      totalAmount: preview.totalAmount,
-      recipientCount: preview.recipients.length,
-      recipients: preview.recipients,
-      investmentIds: preview.investmentPayouts.map((p) => p.investmentId),
-      txHash,
-      status: 'executed',
-    });
-
+    const recipientCount = flattenRecipients(preview.categories).length;
     res.json({
       success: true,
-      data: { txHash, totalAmount: preview.totalAmount, recipientCount: preview.recipients.length, batchId: batch._id },
+      data: { totalAmount: preview.totalAmount, recipientCount, results },
     });
   } catch (err) {
     res.json({ success: false, error: err.message });

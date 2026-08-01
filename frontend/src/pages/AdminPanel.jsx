@@ -943,6 +943,13 @@ function AiRatesTab({ password, showMsg }) {
   );
 }
 
+const CATEGORY_LABELS = {
+  roi: 'ROI',
+  affiliate_l1: 'Affiliate L1',
+  affiliate_l2: 'Affiliate L2',
+  affiliate_l3: 'Affiliate L3',
+};
+
 function PayoutsTab({ password, showMsg }) {
   const [preview, setPreview] = useState(null);
   const [history, setHistory] = useState([]);
@@ -1069,6 +1076,7 @@ function PayoutsTab({ password, showMsg }) {
           <div key={b._id} className="admin-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: THEME.font.base, borderRadius: THEME.radius.sm }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Badge color={b.status === 'executed' ? THEME.color.green : THEME.color.red}>{b.status}</Badge>
+              {b.category && <Badge color={THEME.color.blue}>{CATEGORY_LABELS[b.category] || b.category}</Badge>}
               <span style={{ color: THEME.color.textFaint }}>{new Date(b.createdAt).toLocaleString()}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
