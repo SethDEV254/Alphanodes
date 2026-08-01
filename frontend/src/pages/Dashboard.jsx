@@ -193,6 +193,7 @@ export default function Dashboard() {
   const handleDeposit = async () => {
     const usd = parseFloat(depositAmt);
     if (!usd || usd <= 0) return showMsg('Enter a valid amount', true);
+    if (usd < 100) return showMsg('Minimum deposit is $100', true);
     if (!address) return showMsg('Wallet not connected', true);
     const bnbAmt = usd / bnbPrice;
     setLoading('deposit');
@@ -606,7 +607,7 @@ export default function Dashboard() {
 
                 {/* Quick amounts */}
                 <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                  {[1, 25, 100, 500].map(v => (
+                  {[100, 250, 500, 1000].map(v => (
                     <button
                       key={v}
                       onClick={() => setDepositAmt(String(v))}
@@ -630,7 +631,7 @@ export default function Dashboard() {
                     fontSize: 14, fontWeight: 700, color: '#555', pointerEvents: 'none',
                   }}>$</span>
                   <input
-                    type="number" placeholder="1" value={depositAmt}
+                    type="number" placeholder="100" value={depositAmt}
                     onChange={e => setDepositAmt(e.target.value)}
                     style={{
                       width: '100%', background: '#0d0d0d',
@@ -651,13 +652,16 @@ export default function Dashboard() {
                     {walletBnb > 0 && parseFloat(depositAmt) > walletBnb * bnbPrice && (
                       <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Exceeds wallet</span>
                     )}
+                    {parseFloat(depositAmt) < 100 && (
+                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Min $100</span>
+                    )}
                   </div>
                 )}
 
                 <button
                   className="btn-primary"
                   onClick={handleDeposit}
-                  disabled={loading === 'deposit' || !depositAmt || parseFloat(depositAmt) <= 0}
+                  disabled={loading === 'deposit' || !depositAmt || parseFloat(depositAmt) < 100}
                   style={{ width: '100%', borderRadius: 10, padding: '13px 0', fontSize: 13 }}
                 >
                   {loading === 'deposit' ? 'Awaiting confirmation...' : `Add Funds${depositAmt ? ` $${depositAmt}` : ''}`}
