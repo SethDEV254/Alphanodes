@@ -6,6 +6,7 @@ const Transaction = require('../models/Transaction');
 const AiInvestment = require('../models/AiInvestment');
 const Setting = require('../models/Setting');
 const Trader = require('../models/Trader');
+const Stake = require('../models/Stake');
 const PayoutBatch = require('../models/PayoutBatch');
 const Ticket = require('../models/Ticket');
 const DistributionWallet = require('../models/DistributionWallet');
@@ -106,6 +107,9 @@ router.get('/stats', auth, async (req, res) => {
     const totalWithdrawn = balances.reduce((s, b) => s + (b.totalWithdrawn || 0), 0);
     const totalAiEarnings = balances.reduce((s, b) => s + (b.aiEarnings || 0), 0);
     const totalStakingEarnings = balances.reduce((s, b) => s + (b.stakingEarnings || 0), 0);
+    const totalTradingBalance = balances.reduce((s, b) => s + (b.tradingBalance || 0), 0);
+    const activeStakes = await Stake.find({ status: 'active' }).select('amount');
+    const totalStaked = activeStakes.reduce((s, st) => s + (st.amount || 0), 0);
     const pendingWithdrawals = await Withdrawal.countDocuments({ status: 'pending' });
     const platformSetting = await Setting.findOne({ key: 'platformPaused' });
     const platformPaused = platformSetting?.value === true;
@@ -118,6 +122,8 @@ router.get('/stats', auth, async (req, res) => {
         totalWithdrawn,
         totalAiEarnings,
         totalStakingEarnings,
+        totalTradingBalance,
+        totalStaked,
         pendingWithdrawals,
         platformPaused,
       },
