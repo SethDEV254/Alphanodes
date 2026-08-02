@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useAccount, useSignMessage, useConnect, useDisconnect } from 'wagmi';
 import {
   adminVerify, adminStats, adminAccounts, adminUpdateAccount,
   adminWithdrawals, adminUpdateWithdrawal, adminCredit,
@@ -1105,6 +1105,12 @@ function LoginScreen({ onLogin }) {
   const { open } = useWeb3Modal();
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const { connectAsync, connectors } = useConnect();
+  const { disconnectAsync } = useDisconnect();
+  // Go straight to the browser extension wallet (MetaMask etc.) instead of the
+  // multi-wallet picker modal — this is an admin-only login, not a general
+  // wallet-connect flow, so skip straight to the account switcher.
+  const injectedConnector = connectors.find((c) => c.id === 'injected') || connectors[0];
 
   useEffect(() => {
     const tryVanta = () => {
@@ -1135,7 +1141,21 @@ function LoginScreen({ onLogin }) {
   };
 
   const handleWalletLogin = async () => {
-    if (!isConnected || !address) { open(); return; }
+    if (!isConnected || !address) {
+      setWalletLoading(true); setError('');
+      try {
+        if (injectedConnector) {
+          await connectAsync({ connector: injectedConnector });
+        } else {
+          open(); // no injected wallet found — fall back to the picker (e.g. WalletConnect)
+        }
+      } catch (e) {
+        setError(e?.shortMessage || e?.message || 'Could not connect wallet');
+      } finally {
+        setWalletLoading(false);
+      }
+      return;
+    }
     setWalletLoading(true); setError('');
     try {
       const nonceRes = await adminAuthNonce(address);
@@ -1190,8 +1210,19 @@ function LoginScreen({ onLogin }) {
           {walletLoading ? 'Confirm in wallet...' : isConnected ? 'Sign In With Wallet' : 'Connect Wallet'}
         </Button>
         {isConnected && (
-          <div style={{ textAlign: 'center', fontSize: THEME.font.sm, color: THEME.color.textFaint, marginBottom: 18, fontFamily: 'monospace' }}>
-            {address.slice(0, 8)}...{address.slice(-4)}
+          <div style={{ textAlign: 'center', marginBottom: 18 }}>
+            <span style={{ fontSize: THEME.font.sm, color: THEME.color.textFaint, fontFamily: 'monospace' }}>
+              {address.slice(0, 8)}...{address.slice(-4)}
+            </span>
+            <button
+              onClick={async () => { await disconnectAsync(); setError(''); }}
+              style={{
+                display: 'block', margin: '6px auto 0', fontSize: THEME.font.xs, color: THEME.color.blue,
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600,
+              }}
+            >
+              Not the right wallet? Switch
+            </button>
           </div>
         )}
 
