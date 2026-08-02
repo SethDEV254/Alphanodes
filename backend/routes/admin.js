@@ -11,6 +11,7 @@ const { AI_PACKAGES } = require('../config/aiPackages');
 const { computeDailyPayouts, AFFILIATE_RATES, CATEGORIES } = require('../services/payout');
 const { pendingRoi, isCapped } = require('../services/aiAccrual');
 const adminAuth = require('../services/adminAuth');
+const { getContractBnbBalance } = require('../services/contractBalance');
 
 let contractService = null;
 function getContractService() {
@@ -606,21 +607,6 @@ router.post('/ai-rates', auth, async (req, res) => {
     res.json({ success: false, error: err.message });
   }
 });
-
-async function getContractBnbBalance() {
-  if (!process.env.CONTRACT_ADDRESS || !process.env.BSC_RPC) return null;
-  try {
-    const rpcRes = await fetch(process.env.BSC_RPC, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getBalance', params: [process.env.CONTRACT_ADDRESS, 'latest'], id: 1 }),
-    });
-    const json = await rpcRes.json();
-    return json.result ? parseInt(json.result, 16) / 1e18 : null;
-  } catch {
-    return null;
-  }
-}
 
 // Merges every category's recipients into one address->amount view — used for the
 // admin summary list/total, which doesn't need the per-category split to display.

@@ -5,6 +5,7 @@ const Transaction = require('../models/Transaction');
 const Setting = require('../models/Setting');
 const { AI_PACKAGES } = require('../config/aiPackages');
 const { pendingRoi, isCapped } = require('../services/aiAccrual');
+const { getContractBnbBalance } = require('../services/contractBalance');
 
 // Merges admin-configured rate overrides (Setting: aiPackageRates) onto the base packages
 async function getPackageRates() {
@@ -121,6 +122,13 @@ router.post('/claim', async (req, res) => {
 
     const pending = pendingRoi(investment);
     if (pending <= 0) return res.json({ success: false, error: 'Nothing to claim yet' });
+
+    // Off-chain tradingBalance is only ever a promise of real BNB — never credit
+    // more than the contract can actually back, or a later withdrawal just fails.
+    const contractBalance = await getContractBnbBalance();
+    if (contractBalance != null && contractBalance < pending) {
+      return res.json({ success: false, error: 'Insufficient funds available for payout right now' });
+    }
 
     investment.claimedEarnings += pending;
     investment.totalPaidOut = (investment.totalPaidOut || 0) + pending;
