@@ -10,6 +10,9 @@ import {
   adminGetAiRates, adminSetAiRates,
   adminPreviewPayouts, adminExecutePayouts, adminPayoutHistory,
   adminAuthNonce, adminAuthVerify, adminAuthLogout, adminAuthSession,
+  adminGetTickets, adminReplyTicket, adminUpdateTicket,
+  adminGetDistribution, adminAddDistributionWallet, adminDeleteDistributionWallet,
+  adminExecuteDistribution, adminDistributionHistory,
 } from '../api.js';
 
 const fmt = (n) => Number(n || 0).toFixed(2);
@@ -31,6 +34,8 @@ const SIDEBAR = {
     { id: 'stakes', label: 'Stakes', icon: '⊟' },
     { id: 'copytrades', label: 'Copy Trades', icon: '⊡' },
     { id: 'withdrawals', label: 'Withdrawals', icon: '⊠' },
+    { id: 'tickets', label: 'Tickets', icon: '✉' },
+    { id: 'distribution', label: 'Distribution', icon: '⛃' },
   ],
   SYSTEM: [
     { id: 'contract', label: 'Contract', icon: '⬡' },
@@ -1094,6 +1099,255 @@ function PayoutsTab({ password, showMsg }) {
   );
 }
 
+const TICKET_STATUS_COLOR = { open: THEME.color.gold, answered: THEME.color.green, closed: THEME.color.textFaint };
+
+function TicketsTab({ password, showMsg }) {
+  const [tickets, setTickets] = useState([]);
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState('');
+  const [openId, setOpenId] = useState(null);
+  const [replyText, setReplyText] = useState('');
+
+  useEffect(() => { fetchTickets(); }, [status]);
+
+  const fetchTickets = async () => {
+    try { const r = await adminGetTickets(password, status); setTickets(r.data.data || []); } catch {}
+  };
+
+  const handleReply = async (id) => {
+    if (!replyText.trim()) return;
+    setLoading('reply-' + id);
+    try {
+      const r = await adminReplyTicket(id, replyText.trim(), password);
+      if (!r.data.success) return showMsg(r.data.error || 'Failed', true);
+      setReplyText('');
+      showMsg('Reply sent');
+      fetchTickets();
+    } catch { showMsg('Request failed', true); }
+    finally { setLoading(''); }
+  };
+
+  const handleStatus = async (id, newStatus) => {
+    try {
+      const r = await adminUpdateTicket(id, newStatus, password);
+      if (!r.data.success) return showMsg(r.data.error || 'Failed', true);
+      fetchTickets();
+    } catch { showMsg('Request failed', true); }
+  };
+
+  return (
+    <div className="admin-tab-panel" style={{ padding: '28px 32px', maxWidth: 920 }}>
+      <SectionHeader
+        title="Support Tickets"
+        subtitle={`${tickets.length} ticket(s)`}
+        action={
+          <select
+            value={status}
+            onChange={e => setStatus(e.target.value)}
+            style={{ ...inputStyle(), width: 160, padding: '8px 10px', fontSize: THEME.font.sm }}
+          >
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="answered">Answered</option>
+            <option value="closed">Closed</option>
+          </select>
+        }
+      />
+
+      <Card>
+        {tickets.length === 0 ? (
+          <EmptyState icon="✉" title="No tickets" />
+        ) : tickets.map(t => (
+          <div key={t._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '12px 4px' }}>
+            <div
+              onClick={() => setOpenId(openId === t._id ? null : t._id)}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+            >
+              <div>
+                <div style={{ fontSize: THEME.font.md, fontWeight: 700, color: '#fff' }}>{t.subject}</div>
+                <div style={{ fontSize: THEME.font.sm, color: THEME.color.textFaint, marginTop: 2, fontFamily: 'monospace' }}>
+                  {t.address.slice(0, 8)}...{t.address.slice(-4)} · {new Date(t.createdAt).toLocaleString()}
+                </div>
+              </div>
+              <Badge color={TICKET_STATUS_COLOR[t.status]}>{t.status}</Badge>
+            </div>
+
+            {openId === t._id && (
+              <div style={{ marginTop: 12, paddingLeft: 4 }}>
+                <div style={{ fontSize: THEME.font.base, color: '#ccc', marginBottom: 10, lineHeight: 1.6 }}>{t.message}</div>
+                {t.replies.map((r, i) => (
+                  <div key={i} style={{
+                    padding: '8px 10px', marginBottom: 6, borderRadius: THEME.radius.sm, fontSize: THEME.font.base,
+                    background: r.from === 'admin' ? 'rgba(252,213,53,0.06)' : 'rgba(255,255,255,0.03)',
+                    borderLeft: `2px solid ${r.from === 'admin' ? THEME.color.gold : '#555'}`,
+                  }}>
+                    <div style={{ fontSize: THEME.font.xs, fontWeight: 700, color: r.from === 'admin' ? THEME.color.gold : '#888', marginBottom: 3 }}>
+                      {r.from === 'admin' ? 'Admin' : 'User'} · {new Date(r.createdAt).toLocaleString()}
+                    </div>
+                    {r.message}
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <input
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    placeholder="Reply as admin..."
+                    style={{ ...inputStyle(), flex: 1, padding: '9px 12px', fontSize: THEME.font.sm }}
+                  />
+                  <Button size="sm" onClick={() => handleReply(t._id)} disabled={loading === 'reply-' + t._id}>Reply</Button>
+                  {t.status !== 'closed' && (
+                    <Button size="sm" variant="secondary" onClick={() => handleStatus(t._id, 'closed')}>Close</Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+function DistributionTab({ password, showMsg }) {
+  const [wallets, setWallets] = useState([]);
+  const [owner, setOwner] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [form, setForm] = useState({ address: '', label: '', percent: '' });
+  const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState('');
+
+  useEffect(() => { fetchAll(); }, []);
+
+  const fetchAll = async () => {
+    try {
+      const [d, h] = await Promise.all([adminGetDistribution(password), adminDistributionHistory(password)]);
+      if (d.data.success) { setWallets(d.data.data.wallets || []); setOwner(d.data.data.owner); }
+      setHistory(h.data.data || []);
+    } catch {}
+  };
+
+  const handleAdd = async () => {
+    if (!form.address.trim() || !form.percent) return showMsg('Address and percent required', true);
+    setLoading('add');
+    try {
+      const r = await adminAddDistributionWallet(
+        { address: form.address.trim(), label: form.label.trim(), percent: Number(form.percent) },
+        password
+      );
+      if (!r.data.success) return showMsg(r.data.error || 'Failed', true);
+      setForm({ address: '', label: '', percent: '' });
+      showMsg('Wallet added');
+      fetchAll();
+    } catch { showMsg('Request failed', true); }
+    finally { setLoading(''); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Remove this distribution wallet?')) return;
+    try { await adminDeleteDistributionWallet(id, password); showMsg('Removed'); fetchAll(); }
+    catch { showMsg('Failed', true); }
+  };
+
+  const handleExecute = async () => {
+    const amt = Number(amount);
+    if (!(amt > 0)) return showMsg('Enter a valid amount', true);
+    if (!window.confirm(
+      `Distribute ${amt} BNB across ${wallets.filter(w => w.active).length} active wallet(s) right now? This is a real, irreversible on-chain transaction.`
+    )) return;
+    setLoading('execute');
+    try {
+      const r = await adminExecuteDistribution(amt, password);
+      if (r.data.success) {
+        showMsg(`Distributed ${amt} BNB — status: ${r.data.data.status}`);
+        setAmount('');
+        fetchAll();
+      } else {
+        showMsg(r.data.error || 'Execute failed', true);
+      }
+    } catch { showMsg('Request failed', true); }
+    finally { setLoading(''); }
+  };
+
+  const activeCount = wallets.filter(w => w.active).length;
+
+  return (
+    <div className="admin-tab-panel" style={{ padding: '28px 32px', maxWidth: 920 }}>
+      <SectionHeader
+        title="Distribution Wallets"
+        subtitle="Admin-configurable wallets that receive a manually-triggered share of BNB from the owner wallet."
+        action={<Button variant="secondary" size="sm" onClick={fetchAll}>↺ Refresh</Button>}
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <StatTile icon="⬡" label="Owner Wallet Balance" color={THEME.color.blue} value={owner ? `${owner.balance.toFixed(6)} BNB` : '—'} sub={owner?.address ? `${owner.address.slice(0, 8)}...${owner.address.slice(-4)}` : ''} />
+        <StatTile icon="⛃" label="Active Wallets" color={THEME.color.gold} value={activeCount} sub={`${wallets.length} total configured`} />
+      </div>
+
+      {/* Add wallet */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 12 }}>Add Distribution Wallet</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: 8 }}>
+          <input placeholder="0x..." value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} style={{ ...inputStyle(), padding: '9px 12px', fontSize: THEME.font.sm }} />
+          <input placeholder="Label (optional)" value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} style={{ ...inputStyle(), padding: '9px 12px', fontSize: THEME.font.sm }} />
+          <input placeholder="%" type="number" value={form.percent} onChange={e => setForm(f => ({ ...f, percent: e.target.value }))} style={{ ...inputStyle(), padding: '9px 12px', fontSize: THEME.font.sm }} />
+          <Button size="sm" onClick={handleAdd} disabled={loading === 'add'}>Add</Button>
+        </div>
+      </Card>
+
+      {/* Wallet list */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 14 }}>Configured Wallets</div>
+        {wallets.length === 0 ? (
+          <EmptyState icon="⛃" title="No distribution wallets configured" />
+        ) : wallets.map(w => (
+          <div key={w._id} className="admin-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: THEME.font.base }}>
+            <div>
+              <span style={{ fontFamily: 'monospace', color: '#9aa3b5' }}>{w.address.slice(0, 8)}...{w.address.slice(-4)}</span>
+              {w.label && <span style={{ color: THEME.color.textFaint, marginLeft: 8 }}>{w.label}</span>}
+              {!w.active && <Badge color={THEME.color.red}>Inactive</Badge>}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ color: THEME.color.gold, fontWeight: 700 }}>{w.percent}%</span>
+              <button className="admin-link" onClick={() => handleDelete(w._id)} style={{ background: 'none', border: 'none', color: THEME.color.red, cursor: 'pointer', fontSize: THEME.font.sm, fontWeight: 600 }}>Remove</button>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      {/* Execute */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 12 }}>Execute Distribution</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            placeholder="Amount (BNB)" type="number" value={amount}
+            onChange={e => setAmount(e.target.value)}
+            style={{ ...inputStyle(), flex: 1, padding: '11px 14px' }}
+          />
+          <Button onClick={handleExecute} disabled={loading === 'execute' || !activeCount}>
+            {loading === 'execute' ? 'Sending...' : 'Distribute'}
+          </Button>
+        </div>
+      </Card>
+
+      {/* History */}
+      <Card>
+        <div style={{ fontSize: THEME.font.md, fontWeight: 700, marginBottom: 14 }}>Recent Batches</div>
+        {history.length === 0 ? (
+          <EmptyState icon="◷" title="No distributions executed yet" />
+        ) : history.map(b => (
+          <div key={b._id} className="admin-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 4px', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: THEME.font.base }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Badge color={b.status === 'executed' ? THEME.color.green : b.status === 'partial' ? THEME.color.gold : THEME.color.red}>{b.status}</Badge>
+              <span style={{ color: THEME.color.textFaint }}>{new Date(b.createdAt).toLocaleString()}</span>
+            </div>
+            <span style={{ color: THEME.color.gold, fontWeight: 700 }}>{Number(b.totalAmount).toFixed(6)} BNB</span>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
 // Login screen
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
@@ -1697,6 +1951,8 @@ export default function AdminPanel() {
         {tab === 'investments' && <InvestmentsTab password={password} showMsg={showMsg} />}
         {tab === 'ai-rates' && <AiRatesTab password={password} showMsg={showMsg} />}
         {tab === 'payouts' && <PayoutsTab password={password} showMsg={showMsg} />}
+        {tab === 'tickets' && <TicketsTab password={password} showMsg={showMsg} />}
+        {tab === 'distribution' && <DistributionTab password={password} showMsg={showMsg} />}
         {tab === 'stakes' && <StakesTab password={password} showMsg={showMsg} />}
         {tab === 'contract' && <ContractTab password={password} showMsg={showMsg} />}
         {tab === 'platform' && <PlatformTab password={password} showMsg={showMsg} />}

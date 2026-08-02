@@ -7,11 +7,15 @@ const AiInvestment = require('../models/AiInvestment');
 const Setting = require('../models/Setting');
 const Trader = require('../models/Trader');
 const PayoutBatch = require('../models/PayoutBatch');
+const Ticket = require('../models/Ticket');
+const DistributionWallet = require('../models/DistributionWallet');
+const DistributionBatch = require('../models/DistributionBatch');
 const { AI_PACKAGES } = require('../config/aiPackages');
 const { computeDailyPayouts, AFFILIATE_RATES, CATEGORIES } = require('../services/payout');
 const { pendingRoi, isCapped } = require('../services/aiAccrual');
 const adminAuth = require('../services/adminAuth');
-const { getContractBnbBalance } = require('../services/contractBalance');
+const { getContractBnbBalance, getOwnerWalletBalance } = require('../services/contractBalance');
+const { sendDistribution } = require('../services/distribution');
 
 let contractService = null;
 function getContractService() {
@@ -750,6 +754,161 @@ router.post('/payouts/execute', auth, async (req, res) => {
 router.get('/payouts/history', auth, async (req, res) => {
   try {
     const batches = await PayoutBatch.find().sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, data: batches });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ─── Support Tickets ────────────────────────────────────────────────────────
+
+// GET /api/admin/tickets?password=&status=
+router.get('/tickets', auth, async (req, res) => {
+  try {
+    const filter = req.query.status ? { status: req.query.status } : {};
+    const tickets = await Ticket.find(filter).sort({ updatedAt: -1 }).limit(200);
+    res.json({ success: true, data: tickets });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/tickets/:id/reply?password=
+router.post('/tickets/:id/reply', auth, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message?.trim()) return res.json({ success: false, error: 'Message required' });
+
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) return res.json({ success: false, error: 'Ticket not found' });
+
+    ticket.replies.push({ from: 'admin', message: message.trim() });
+    ticket.status = 'answered';
+    await ticket.save();
+
+    res.json({ success: true, data: ticket });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /api/admin/tickets/:id?password=
+router.patch('/tickets/:id', auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['open', 'answered', 'closed'].includes(status)) {
+      return res.json({ success: false, error: 'Invalid status' });
+    }
+
+    const ticket = await Ticket.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!ticket) return res.json({ success: false, error: 'Ticket not found' });
+
+    res.json({ success: true, data: ticket });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ─── Distribution Wallets ───────────────────────────────────────────────────
+// Fully off-chain, decoupled from the immutable contract's fixed 4-wallet
+// deposit split — an admin-configurable list of wallets that can receive a
+// manually-triggered share of BNB sent from the owner wallet.
+
+// GET /api/admin/distribution?password=
+router.get('/distribution', auth, async (req, res) => {
+  try {
+    const [wallets, owner] = await Promise.all([
+      DistributionWallet.find().sort({ createdAt: -1 }),
+      getOwnerWalletBalance(),
+    ]);
+    res.json({ success: true, data: { wallets, owner } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/distribution?password=
+router.post('/distribution', auth, async (req, res) => {
+  try {
+    const { address, label, percent } = req.body;
+    if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.json({ success: false, error: 'Valid address required' });
+    }
+    const pct = Number(percent);
+    if (!(pct > 0 && pct <= 100)) {
+      return res.json({ success: false, error: 'Percent must be between 0 and 100' });
+    }
+
+    const wallet = await DistributionWallet.create({
+      address: address.toLowerCase(),
+      label: label || '',
+      percent: pct,
+    });
+    res.json({ success: true, data: wallet });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/admin/distribution/:id?password=
+router.delete('/distribution/:id', auth, async (req, res) => {
+  try {
+    await DistributionWallet.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/distribution/execute?password= — sends real BNB, split by percentage
+router.post('/distribution/execute', auth, async (req, res) => {
+  try {
+    const amount = Number(req.body.amount);
+    if (!(amount > 0)) return res.json({ success: false, error: 'Enter a valid amount' });
+
+    const activeWallets = await DistributionWallet.find({ active: true });
+    const totalPercent = activeWallets.reduce((s, w) => s + w.percent, 0);
+    if (!activeWallets.length || totalPercent <= 0) {
+      return res.json({ success: false, error: 'No active distribution wallets configured' });
+    }
+
+    const owner = await getOwnerWalletBalance();
+    if (owner != null && owner.balance < amount) {
+      return res.json({
+        success: false,
+        error: `Owner wallet balance (${owner.balance.toFixed(6)} BNB) is below the requested amount (${amount} BNB)`,
+      });
+    }
+
+    // Normalize so a partial-active-set still sums exactly to `amount`.
+    const recipients = activeWallets.map((w) => ({
+      address: w.address,
+      label: w.label,
+      percent: w.percent,
+      amount: amount * (w.percent / totalPercent),
+    }));
+
+    const results = await sendDistribution(recipients);
+    const allFailed = results.every((r) => r.status === 'failed');
+    const anyFailed = results.some((r) => r.status === 'failed');
+
+    const batch = await DistributionBatch.create({
+      totalAmount: amount,
+      recipients: results,
+      status: allFailed ? 'failed' : anyFailed ? 'partial' : 'executed',
+    });
+
+    if (allFailed) return res.json({ success: false, error: 'All transfers failed', data: batch });
+    res.json({ success: true, data: batch });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/distribution/history?password=
+router.get('/distribution/history', auth, async (req, res) => {
+  try {
+    const batches = await DistributionBatch.find().sort({ createdAt: -1 }).limit(50);
     res.json({ success: true, data: batches });
   } catch (err) {
     res.json({ success: false, error: err.message });

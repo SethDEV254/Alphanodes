@@ -115,3 +115,31 @@ export const adminExecutePayouts = (password) =>
   api.post('/api/admin/payouts/execute', { password });
 export const adminPayoutHistory = (password) =>
   api.get(`/api/admin/payouts/history?password=${password}`);
+
+// Support tickets
+export const getTickets = (address) => api.get(`/api/tickets?address=${address}`);
+export const createTicket = (data) => api.post('/api/tickets', data);
+export const replyTicket = (id, data) => api.post(`/api/tickets/${id}/reply`, data);
+
+export const adminGetTickets = (password, status = '') =>
+  api.get(`/api/admin/tickets?password=${password}${status ? `&status=${status}` : ''}`);
+export const adminReplyTicket = (id, message, password) =>
+  api.post(`/api/admin/tickets/${id}/reply`, { message, password });
+export const adminUpdateTicket = (id, status, password) =>
+  api.patch(`/api/admin/tickets/${id}`, { status, password });
+
+// AI chat
+export const aiChatSend = (address, message) =>
+  api.post('/api/ai-analysis/chat', { address, message });
+
+// Distribution wallets
+export const adminGetDistribution = (password) =>
+  api.get(`/api/admin/distribution?password=${password}`);
+export const adminAddDistributionWallet = (data, password) =>
+  api.post('/api/admin/distribution', { ...data, password });
+export const adminDeleteDistributionWallet = (id, password) =>
+  api.delete(`/api/admin/distribution/${id}?password=${password}`);
+export const adminExecuteDistribution = (amount, password) =>
+  api.post('/api/admin/distribution/execute', { amount, password });
+export const adminDistributionHistory = (password) =>
+  api.get(`/api/admin/distribution/history?password=${password}`);

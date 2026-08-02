@@ -43,6 +43,8 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/copytrade', require('./routes/copytrade'));
 app.use('/api/trade', require('./routes/trade'));
 app.use('/api/loan', require('./routes/loan'));
+app.use('/api/tickets', require('./routes/tickets'));
+app.use('/api/ai-analysis', require('./routes/ai-analysis'));
 
 app.get('/api/crypto/prices', async (req, res) => {
   try {

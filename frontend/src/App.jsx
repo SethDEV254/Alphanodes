@@ -12,6 +12,8 @@ import CopyTrading from './pages/CopyTrading.jsx';
 import Staking from './pages/Staking.jsx';
 import Loans from './pages/Loans.jsx';
 import Affiliate from './pages/Affiliate.jsx';
+import AIChat from './pages/AIChat.jsx';
+import Support from './pages/Support.jsx';
 import AdminPanel from './pages/AdminPanel.jsx';
 import { ADMIN_PATH, BNB_PRICE_USD } from './config.js';
 
@@ -128,6 +130,8 @@ export default function App() {
               <Route path="/staking" element={<Staking />} />
               <Route path="/loans" element={<Loans />} />
               <Route path="/affiliate" element={<Affiliate />} />
+              <Route path="/ai-chat" element={<AIChat />} />
+              <Route path="/support" element={<Support />} />
             </Route>
           ) : (
             <Route path="*" element={<Navigate to="/" />} />
