@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useAccount, useSignMessage, useConnect, useDisconnect } from 'wagmi';
 import {
-  adminVerify, adminStats, adminAccounts, adminUpdateAccount,
+  adminStats, adminAccounts, adminUpdateAccount,
   adminWithdrawals, adminUpdateWithdrawal, adminCredit,
   adminGetTraders, adminCreateTrader, adminUpdateTrader, adminDeleteTrader,
   adminContractInfo, adminFundContract, adminSetPaused, adminEmergencyWithdraw, adminSetTreasury,
@@ -1354,8 +1354,6 @@ function DistributionTab({ password, showMsg }) {
 
 // Login screen
 function LoginScreen({ onLogin }) {
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [error, setError] = useState('');
   const vantaRef = useRef(null);
@@ -1387,16 +1385,6 @@ function LoginScreen({ onLogin }) {
     const t = setTimeout(tryVanta, 500);
     return () => { clearTimeout(t); if (vantaEffect.current) { vantaEffect.current.destroy(); vantaEffect.current = null; } };
   }, []);
-
-  const handleLogin = async () => {
-    setLoading(true); setError('');
-    try {
-      const r = await adminVerify(password);
-      if (r.data.success) { onLogin(password); }
-      else { setError('Invalid password'); }
-    } catch { setError('Connection failed'); }
-    finally { setLoading(false); }
-  };
 
   const handleWalletLogin = async () => {
     if (!isConnected || !address) {
@@ -1483,23 +1471,6 @@ function LoginScreen({ onLogin }) {
             </button>
           </div>
         )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-          <span style={{ fontSize: THEME.font.sm, color: THEME.color.textFaint }}>or use password</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-        </div>
-
-        <input
-          className="admin-input"
-          type="password" placeholder="Admin password"
-          value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleLogin()}
-          style={inputStyle({ border: '1px solid rgba(252,213,53,0.2)', padding: '13px 14px', fontSize: 14, marginBottom: 14 })}
-        />
-        <Button onClick={handleLogin} disabled={loading} variant="secondary" size="lg" style={{ width: '100%' }}>
-          {loading ? 'Verifying...' : 'Login'}
-        </Button>
       </div>
     </div>
   );

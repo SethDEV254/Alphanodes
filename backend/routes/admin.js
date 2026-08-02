@@ -30,31 +30,16 @@ function getContractService() {
   return contractService;
 }
 
-// Accepts EITHER a valid wallet-login session cookie OR the legacy shared
-// password. Transitional (phase 1 of the wallet-auth rollout) — once wallet
-// login is confirmed working in production for both admin addresses, the
-// password branch gets removed in a follow-up change.
+// Wallet-only: requires a valid session cookie issued by /auth/verify for an
+// address on ADMIN_WALLET_ADDRESSES. The legacy shared-password fallback
+// (phase 1 of the wallet-auth rollout) has been removed now that wallet
+// login is confirmed working in production for both admin addresses.
 const auth = (req, res, next) => {
   const session = adminAuth.getSessionFromRequest(req);
-  if (session) {
-    req.adminAddress = session.address;
-    return next();
-  }
-  const pw = req.query.password || req.body.password;
-  if (pw !== process.env.ADMIN_PASSWORD) {
-    return res.status(403).json({ success: false, error: 'Unauthorized' });
-  }
+  if (!session) return res.status(403).json({ success: false, error: 'Unauthorized' });
+  req.adminAddress = session.address;
   next();
 };
-
-// POST /api/admin/verify — legacy password check
-router.post('/verify', (req, res) => {
-  const { password } = req.body;
-  if (password !== process.env.ADMIN_PASSWORD) {
-    return res.json({ success: false, error: 'Invalid password' });
-  }
-  res.json({ success: true });
-});
 
 // POST /api/admin/auth/nonce { address } — start a wallet sign-in
 router.post('/auth/nonce', (req, res) => {

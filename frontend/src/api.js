@@ -53,7 +53,6 @@ export const getWithdrawals = (address) =>
 export const getCryptoPrices = () => api.get('/api/crypto/prices');
 
 // Admin
-export const adminVerify = (password) => api.post('/api/admin/verify', { password });
 
 // Wallet-signature admin login (alongside the legacy password during rollout)
 export const adminAuthNonce = (address) => api.post('/api/admin/auth/nonce', { address });
