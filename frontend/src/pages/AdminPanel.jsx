@@ -25,16 +25,20 @@ const SIDEBAR = {
     { id: 'referrals', label: 'Referrals', icon: '⌘' },
     { id: 'cycles', label: '3x Cycles', icon: '↺' },
   ],
-  MANAGEMENT: [
+  USERS: [
     { id: 'accounts', label: 'Accounts', icon: '◎' },
+    { id: 'withdrawals', label: 'Withdrawals', icon: '⊠' },
+    { id: 'tickets', label: 'Tickets', icon: '✉' },
+  ],
+  PRODUCTS: [
     { id: 'traders', label: 'Traders', icon: '◈' },
     { id: 'investments', label: 'AI Investments', icon: '◆' },
     { id: 'ai-rates', label: 'AI Rates', icon: '◈' },
-    { id: 'payouts', label: 'Daily Payouts', icon: '⇄' },
     { id: 'stakes', label: 'Stakes', icon: '⊟' },
     { id: 'copytrades', label: 'Copy Trades', icon: '⊡' },
-    { id: 'withdrawals', label: 'Withdrawals', icon: '⊠' },
-    { id: 'tickets', label: 'Tickets', icon: '✉' },
+  ],
+  PAYOUTS: [
+    { id: 'payouts', label: 'Daily Payouts', icon: '⇄' },
     { id: 'distribution', label: 'Distribution', icon: '⛃' },
   ],
   SYSTEM: [
@@ -1668,10 +1672,10 @@ export default function AdminPanel() {
         </div>
 
         {/* Nav */}
-        <nav className="admin-scroll" style={{ flex: 1, padding: '14px 0', overflowY: 'auto' }}>
+        <nav className="admin-scroll" style={{ flex: 1, padding: '10px 0', overflowY: 'auto' }}>
           {Object.entries(SIDEBAR).map(([section, items]) => (
-            <div key={section} style={{ marginBottom: 6 }}>
-              <div style={{ padding: '10px 18px 6px', fontSize: 9, color: THEME.color.textFaint, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            <div key={section} style={{ marginBottom: 4 }}>
+              <div style={{ padding: '8px 18px 4px', fontSize: 9, color: THEME.color.textFaint, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
                 {section}
               </div>
               {items.map(item => {
@@ -1683,7 +1687,7 @@ export default function AdminPanel() {
                     onClick={() => setTab(item.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
-                      width: '100%', padding: '9px 18px', textAlign: 'left',
+                      width: '100%', padding: '7px 18px', textAlign: 'left',
                       background: active ? 'rgba(252,213,53,0.1)' : 'transparent',
                       borderLeft: active ? `2px solid ${THEME.color.gold}` : '2px solid transparent',
                       border: 'none', borderLeftWidth: 2, borderLeftStyle: 'solid',
