@@ -10,6 +10,7 @@ const PayoutBatch = require('../models/PayoutBatch');
 const { AI_PACKAGES } = require('../config/aiPackages');
 const { computeDailyPayouts, AFFILIATE_RATES, CATEGORIES } = require('../services/payout');
 const { pendingRoi, isCapped } = require('../services/aiAccrual');
+const adminAuth = require('../services/adminAuth');
 
 let contractService = null;
 function getContractService() {
@@ -23,7 +24,16 @@ function getContractService() {
   return contractService;
 }
 
+// Accepts EITHER a valid wallet-login session cookie OR the legacy shared
+// password. Transitional (phase 1 of the wallet-auth rollout) — once wallet
+// login is confirmed working in production for both admin addresses, the
+// password branch gets removed in a follow-up change.
 const auth = (req, res, next) => {
+  const session = adminAuth.getSessionFromRequest(req);
+  if (session) {
+    req.adminAddress = session.address;
+    return next();
+  }
   const pw = req.query.password || req.body.password;
   if (pw !== process.env.ADMIN_PASSWORD) {
     return res.status(403).json({ success: false, error: 'Unauthorized' });
@@ -31,13 +41,54 @@ const auth = (req, res, next) => {
   next();
 };
 
-// POST /api/admin/verify
+// POST /api/admin/verify — legacy password check
 router.post('/verify', (req, res) => {
   const { password } = req.body;
   if (password !== process.env.ADMIN_PASSWORD) {
     return res.json({ success: false, error: 'Invalid password' });
   }
   res.json({ success: true });
+});
+
+// POST /api/admin/auth/nonce { address } — start a wallet sign-in
+router.post('/auth/nonce', (req, res) => {
+  const { address } = req.body;
+  if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    return res.json({ success: false, error: 'Valid address required' });
+  }
+  const message = adminAuth.startSignIn(req, res, address);
+  res.json({ success: true, data: { message } });
+});
+
+// POST /api/admin/auth/verify { address, signature } — complete a wallet sign-in
+router.post('/auth/verify', (req, res) => {
+  const { address, signature } = req.body;
+  if (!address || !signature) {
+    return res.json({ success: false, error: 'Address and signature required' });
+  }
+
+  const result = adminAuth.verifySignIn(req, address, signature);
+  adminAuth.clearNonce(res);
+  if (!result.ok) return res.json({ success: false, error: result.error });
+
+  if (!adminAuth.isAdminAddress(address)) {
+    return res.json({ success: false, error: 'This wallet is not authorized for admin access' });
+  }
+
+  adminAuth.issueSession(res, address);
+  res.json({ success: true, data: { address } });
+});
+
+// POST /api/admin/auth/logout
+router.post('/auth/logout', (req, res) => {
+  adminAuth.clearSession(res);
+  res.json({ success: true });
+});
+
+// GET /api/admin/auth/session — check for an existing valid session
+router.get('/auth/session', (req, res) => {
+  const session = adminAuth.getSessionFromRequest(req);
+  res.json({ success: true, data: { authed: !!session, address: session?.address || null } });
 });
 
 // GET /api/admin/stats?password=

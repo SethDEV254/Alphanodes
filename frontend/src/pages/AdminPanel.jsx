@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAccount, useSignMessage } from 'wagmi';
 import {
   adminVerify, adminStats, adminAccounts, adminUpdateAccount,
   adminWithdrawals, adminUpdateWithdrawal, adminCredit,
@@ -7,6 +9,7 @@ import {
   adminGetInvestments, adminManageInvestment, adminGetStakes, adminGetPlatform, adminSetPlatform,
   adminGetAiRates, adminSetAiRates,
   adminPreviewPayouts, adminExecutePayouts, adminPayoutHistory,
+  adminAuthNonce, adminAuthVerify, adminAuthLogout, adminAuthSession,
 } from '../api.js';
 
 const fmt = (n) => Number(n || 0).toFixed(2);
@@ -1095,9 +1098,13 @@ function PayoutsTab({ password, showMsg }) {
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
   const [error, setError] = useState('');
   const vantaRef = useRef(null);
   const vantaEffect = useRef(null);
+  const { open } = useWeb3Modal();
+  const { address, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
   useEffect(() => {
     const tryVanta = () => {
@@ -1127,6 +1134,26 @@ function LoginScreen({ onLogin }) {
     finally { setLoading(false); }
   };
 
+  const handleWalletLogin = async () => {
+    if (!isConnected || !address) { open(); return; }
+    setWalletLoading(true); setError('');
+    try {
+      const nonceRes = await adminAuthNonce(address);
+      if (!nonceRes.data.success) return setError(nonceRes.data.error || 'Failed to start sign-in');
+
+      const signature = await signMessageAsync({ message: nonceRes.data.data.message });
+
+      const verifyRes = await adminAuthVerify(address, signature);
+      if (!verifyRes.data.success) return setError(verifyRes.data.error || 'Sign-in failed');
+
+      onLogin('', address); // wallet session is cookie-based; no password needed downstream
+    } catch (e) {
+      setError(e?.shortMessage || e?.message || 'Wallet sign-in failed');
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
   return (
     <div ref={vantaRef} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <GlobalAdminStyles />
@@ -1154,6 +1181,26 @@ function LoginScreen({ onLogin }) {
             {error}
           </div>
         )}
+        <Button
+          onClick={handleWalletLogin}
+          disabled={walletLoading}
+          size="lg"
+          style={{ width: '100%', marginBottom: 18, boxShadow: '0 0 20px rgba(252,213,53,0.3)' }}
+        >
+          {walletLoading ? 'Confirm in wallet...' : isConnected ? 'Sign In With Wallet' : 'Connect Wallet'}
+        </Button>
+        {isConnected && (
+          <div style={{ textAlign: 'center', fontSize: THEME.font.sm, color: THEME.color.textFaint, marginBottom: 18, fontFamily: 'monospace' }}>
+            {address.slice(0, 8)}...{address.slice(-4)}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+          <span style={{ fontSize: THEME.font.sm, color: THEME.color.textFaint }}>or use password</span>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+        </div>
+
         <input
           className="admin-input"
           type="password" placeholder="Admin password"
@@ -1161,7 +1208,7 @@ function LoginScreen({ onLogin }) {
           onKeyDown={e => e.key === 'Enter' && handleLogin()}
           style={inputStyle({ border: '1px solid rgba(252,213,53,0.2)', padding: '13px 14px', fontSize: 14, marginBottom: 14 })}
         />
-        <Button onClick={handleLogin} disabled={loading} size="lg" style={{ width: '100%', boxShadow: '0 0 20px rgba(252,213,53,0.3)' }}>
+        <Button onClick={handleLogin} disabled={loading} variant="secondary" size="lg" style={{ width: '100%' }}>
           {loading ? 'Verifying...' : 'Login'}
         </Button>
       </div>
@@ -1172,6 +1219,8 @@ function LoginScreen({ onLogin }) {
 export default function AdminPanel() {
   const [password, setPassword] = useState('');
   const [authed, setAuthed] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [adminAddress, setAdminAddress] = useState(null);
   const [tab, setTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [accounts, setAccounts] = useState([]);
@@ -1187,6 +1236,20 @@ export default function AdminPanel() {
   const [fundsMsg, setFundsMsg] = useState('');
   const vantaRef = useRef(null);
   const vantaEffect = useRef(null);
+
+  // Restore a wallet-login session across page refreshes (the old password-only
+  // auth had no persistence at all — this is new).
+  useEffect(() => {
+    adminAuthSession()
+      .then((r) => {
+        if (r.data?.data?.authed) {
+          setAdminAddress(r.data.data.address);
+          setAuthed(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCheckingSession(false));
+  }, []);
 
   useEffect(() => {
     if (!authed) return;
@@ -1282,8 +1345,10 @@ export default function AdminPanel() {
     finally { setLoading(''); }
   };
 
+  if (checkingSession) return null;
+
   if (!authed) {
-    return <LoginScreen onLogin={(pwd) => { setPassword(pwd); setAuthed(true); }} />;
+    return <LoginScreen onLogin={(pwd, walletAddress) => { setPassword(pwd); if (walletAddress) setAdminAddress(walletAddress); setAuthed(true); }} />;
   }
 
   const s = stats || {};
@@ -1355,9 +1420,14 @@ export default function AdminPanel() {
         <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(252,213,53,0.08)' }}>
           <div style={{ fontSize: 9, color: THEME.color.textFaint, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>System</div>
           <Badge color={THEME.color.green}>Connected</Badge>
+          {adminAddress && (
+            <div style={{ fontSize: THEME.font.xs, color: THEME.color.textFaint, fontFamily: 'monospace', marginTop: 8 }}>
+              {adminAddress.slice(0, 8)}...{adminAddress.slice(-4)}
+            </div>
+          )}
           <button
             className="admin-link"
-            onClick={() => setAuthed(false)}
+            onClick={async () => { try { await adminAuthLogout(); } catch {} setAuthed(false); setAdminAddress(null); }}
             style={{ display: 'block', marginTop: 12, fontSize: THEME.font.xs, color: THEME.color.red, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 700 }}
           >
             Logout

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { API } from './config';
 
-const api = axios.create({ baseURL: API });
+const api = axios.create({ baseURL: API, withCredentials: true });
 
 export const getUser = (address) => api.get(`/api/user?address=${address}`);
 export const createUser = (data) => api.post('/api/user', data);
@@ -54,6 +54,13 @@ export const getCryptoPrices = () => api.get('/api/crypto/prices');
 
 // Admin
 export const adminVerify = (password) => api.post('/api/admin/verify', { password });
+
+// Wallet-signature admin login (alongside the legacy password during rollout)
+export const adminAuthNonce = (address) => api.post('/api/admin/auth/nonce', { address });
+export const adminAuthVerify = (address, signature) =>
+  api.post('/api/admin/auth/verify', { address, signature });
+export const adminAuthLogout = () => api.post('/api/admin/auth/logout');
+export const adminAuthSession = () => api.get('/api/admin/auth/session');
 export const adminStats = (password) => api.get(`/api/admin/stats?password=${password}`);
 export const adminAccounts = (password, page = 1) =>
   api.get(`/api/admin/accounts?password=${password}&page=${page}&limit=20`);
