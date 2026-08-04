@@ -12,8 +12,8 @@ const Ticket = require('../models/Ticket');
 const DistributionWallet = require('../models/DistributionWallet');
 const DistributionBatch = require('../models/DistributionBatch');
 const { AI_PACKAGES } = require('../config/aiPackages');
-const { computeDailyPayouts, AFFILIATE_RATES, CATEGORIES } = require('../services/payout');
-const { pendingRoi, isCapped } = require('../services/aiAccrual');
+const { computeDailyPayouts, executeDailyPayouts, flattenRecipients, AFFILIATE_RATES } = require('../services/payout');
+const { pendingRoi } = require('../services/aiAccrual');
 const adminAuth = require('../services/adminAuth');
 const { getContractBnbBalance, getOwnerWalletBalance } = require('../services/contractBalance');
 const { sendDistribution } = require('../services/distribution');
@@ -603,18 +603,6 @@ router.post('/ai-rates', auth, async (req, res) => {
   }
 });
 
-// Merges every category's recipients into one address->amount view — used for the
-// admin summary list/total, which doesn't need the per-category split to display.
-function flattenRecipients(categories) {
-  const totals = new Map();
-  for (const category of CATEGORIES) {
-    for (const r of categories[category].recipients) {
-      totals.set(r.address, (totals.get(r.address) || 0) + r.amount);
-    }
-  }
-  return Array.from(totals.entries()).map(([address, amount]) => ({ address, amount }));
-}
-
 // GET /api/admin/payouts/preview?password= — what everyone is currently owed, no state change
 router.get('/payouts/preview', auth, async (req, res) => {
   try {
@@ -644,98 +632,7 @@ router.get('/payouts/preview', auth, async (req, res) => {
 // contract's already-live batchPayout() function, just called more than once.
 router.post('/payouts/execute', auth, async (req, res) => {
   try {
-    const preview = await computeDailyPayouts();
-    const pendingCategories = CATEGORIES.filter((c) => preview.categories[c].recipients.length > 0);
-    if (!pendingCategories.length) {
-      return res.json({ success: false, error: 'Nothing pending to pay out' });
-    }
-
-    const contractBalance = await getContractBnbBalance();
-    if (contractBalance != null && contractBalance < preview.totalAmount) {
-      return res.json({
-        success: false,
-        error: `Contract balance (${contractBalance.toFixed(6)} BNB) is below what's owed (${preview.totalAmount.toFixed(6)} BNB)`,
-      });
-    }
-
-    const svc = getContractService();
-    if (!svc) return res.json({ success: false, error: 'Contract service not configured (missing CONTRACT_ADDRESS or OWNER_PRIVATE_KEY)' });
-
-    const results = {};
-
-    for (const category of pendingCategories) {
-      const { recipients, totalAmount: categoryTotal } = preview.categories[category];
-      const investmentIds = category === 'roi' ? preview.investmentPayouts.map((p) => p.investmentId) : [];
-
-      let txHash;
-      try {
-        txHash = await svc.batchPayout(
-          recipients.map((r) => r.address),
-          recipients.map((r) => r.amount)
-        );
-      } catch (chainErr) {
-        await PayoutBatch.create({
-          category, totalAmount: categoryTotal, recipientCount: recipients.length,
-          recipients, investmentIds, status: 'failed', error: chainErr.message,
-        });
-        results[category] = { success: false, error: chainErr.message };
-
-        // If the ROI batch itself fails, nothing was paid this round — stop here,
-        // same as before. An affiliate batch failing doesn't block the rest or the
-        // investor bookkeeping below (that money already moved on-chain regardless).
-        if (category === 'roi') {
-          return res.json({ success: false, error: chainErr.message, data: { results } });
-        }
-        continue;
-      }
-
-      await PayoutBatch.create({
-        category, totalAmount: categoryTotal, recipientCount: recipients.length,
-        recipients, investmentIds, txHash, status: 'executed',
-      });
-      results[category] = { success: true, txHash, totalAmount: categoryTotal, recipientCount: recipients.length };
-
-      if (category === 'roi') {
-        // Lock in claimedEarnings/totalPaidOut for exactly what was just paid, so manual
-        // claim/compound (which reads the same fields) can never re-pay this same ROI,
-        // and flip to 'completed' the moment a position's 3x-of-principal cap is reached.
-        await Promise.all(
-          preview.investmentPayouts.map(async (p) => {
-            const inv = await AiInvestment.findById(p.investmentId);
-            if (!inv) return;
-            inv.claimedEarnings = (inv.claimedEarnings || 0) + p.roi;
-            inv.totalPaidOut = (inv.totalPaidOut || 0) + p.roi;
-            if (isCapped(inv)) inv.status = 'completed';
-            await inv.save();
-          })
-        );
-
-        await Transaction.insertMany(
-          preview.breakdown.map((d) => ({
-            address: d.address, type: 'ai_claim', amount: d.roi, txHash,
-            description: `Daily ${d.packageName} ROI (on-chain)`,
-          }))
-        );
-      } else {
-        const level = category.slice(-1);
-        await Transaction.insertMany(
-          preview.breakdown.flatMap((d) =>
-            d.affiliates
-              .filter((a) => String(a.level) === level)
-              .map((a) => ({
-                address: a.address, type: 'referral', amount: a.commission, txHash,
-                description: `Level ${a.level} affiliate commission from ${d.address} (on-chain)`,
-              }))
-          )
-        );
-      }
-    }
-
-    const recipientCount = flattenRecipients(preview.categories).length;
-    res.json({
-      success: true,
-      data: { totalAmount: preview.totalAmount, recipientCount, results },
-    });
+    res.json(await executeDailyPayouts());
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

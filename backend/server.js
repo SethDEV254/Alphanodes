@@ -45,6 +45,7 @@ app.use('/api/trade', require('./routes/trade'));
 app.use('/api/loan', require('./routes/loan'));
 app.use('/api/tickets', require('./routes/tickets'));
 app.use('/api/ai-analysis', require('./routes/ai-analysis'));
+app.use('/api/cron', require('./routes/cron'));
 
 app.get('/api/crypto/prices', async (req, res) => {
   try {
