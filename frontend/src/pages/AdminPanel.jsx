@@ -1637,7 +1637,7 @@ export default function AdminPanel() {
             }}>◎</div>
             <div>
               <div style={{ fontSize: THEME.font.md, fontWeight: 800, color: THEME.color.gold, textShadow: '0 0 12px rgba(252,213,53,0.4)', lineHeight: 1.2 }}>Admin Panel</div>
-              <div style={{ fontSize: 9, color: THEME.color.textFaint, letterSpacing: 0.6 }}>Qubinodes</div>
+              <div style={{ fontSize: 9, color: THEME.color.textFaint, letterSpacing: 0.6 }}>Quibinodes</div>
             </div>
           </div>
         </div>

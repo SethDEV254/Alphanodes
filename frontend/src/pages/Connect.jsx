@@ -342,7 +342,7 @@ export default function Connect() {
         justifyContent: 'center', padding: '32px 24px', textAlign: 'center',
       }}>
         <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px', marginBottom: 8, fontFamily: "'Outfit', sans-serif" }}>
-          Qubi<span style={{ color: '#fcd535', fontWeight: 300 }}>nodes</span>
+          Quibi<span style={{ color: '#fcd535', fontWeight: 300 }}>nodes</span>
         </div>
         <div style={{ fontSize: 13, color: '#555', marginBottom: 40 }}>AI-Powered DeFi on BSC</div>
 
@@ -438,7 +438,7 @@ export default function Connect() {
       {/* Hero */}
       <div style={{ textAlign: 'center', marginBottom: 40, position: 'relative', zIndex: 1 }}>
         <h1 className="hero-title" style={{ fontSize: 'clamp(48px, 8vw, 72px)', fontWeight: 900, margin: 0, lineHeight: 1.05, letterSpacing: '-3px', fontFamily: "'Outfit', sans-serif" }}>
-          Qubi<span style={{ color: '#fcd535', fontWeight: 300 }}>nodes</span>
+          Quibi<span style={{ color: '#fcd535', fontWeight: 300 }}>nodes</span>
         </h1>
         <p style={{ color: '#666', fontSize: 15, marginTop: 14, marginBottom: 0, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.65 }}>
           AI-Powered DeFi Trading Platform on Binance Smart Chain
