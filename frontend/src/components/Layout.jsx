@@ -148,7 +148,7 @@ export default function Layout() {
       {/* Logo */}
       <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(252,213,53,0.08)' }}>
         <div style={{ fontSize: 20, fontWeight: 800, color: '#fcd535', letterSpacing: '-0.5px', textShadow: '0 0 20px rgba(252,213,53,0.5)', fontFamily: "'Outfit', sans-serif" }}>
-          Alpha<span style={{ color: '#ffffff', fontWeight: 300 }}>Nodes</span>
+          Qubi<span style={{ color: '#ffffff', fontWeight: 300 }}>nodes</span>
         </div>
         <div style={{ fontSize: 10, color: '#666', marginTop: 2, letterSpacing: 1, textTransform: 'uppercase' }}>
           AI-Powered DeFi
@@ -220,7 +220,7 @@ export default function Layout() {
           <span style={{ display: 'block', width: 20, height: 2, background: sidebarOpen ? '#fcd535' : '#fff', borderRadius: 1, transition: 'all 0.2s', transform: sidebarOpen ? 'rotate(-45deg) translate(4px, -4px)' : 'none' }} />
         </button>
         <div style={{ fontSize: 18, fontWeight: 800, color: '#fcd535', fontFamily: "'Outfit', sans-serif" }}>
-          Alpha<span style={{ color: '#fff', fontWeight: 300 }}>Nodes</span>
+          Qubi<span style={{ color: '#fff', fontWeight: 300 }}>nodes</span>
         </div>
         <div style={{ fontSize: 11, color: '#fcd535', fontWeight: 700, background: 'rgba(252,213,53,0.08)', padding: '4px 8px', borderRadius: 6 }}>
           {shortAddr}

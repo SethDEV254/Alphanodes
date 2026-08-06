@@ -10,7 +10,7 @@ import App from './App.jsx';
 import { WALLETCONNECT_PROJECT_ID } from './config.js';
 
 const metadata = {
-  name: 'AlphaNodes',
+  name: 'Qubinodes',
   description: 'AI-Powered DeFi on BSC',
   url: 'https://alphanodes.io',
   icons: ['https://alphanodes.io/logo.png'],

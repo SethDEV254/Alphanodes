@@ -42,7 +42,7 @@ export default function AIChat() {
           AI <span style={{ color: '#fcd535' }}>Assistant</span>
         </h2>
         <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
-          Ask how AlphaNodes works — packages, staking, fees, withdrawals. Informational only, not financial advice.
+          Ask how Qubinodes works — packages, staking, fees, withdrawals. Informational only, not financial advice.
         </p>
       </div>
 
