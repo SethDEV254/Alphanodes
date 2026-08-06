@@ -1757,8 +1757,8 @@ export default function AdminPanel() {
                   margin: '0 0', padding: '24px 28px',
                 }}>
                   {[
-                    { label: 'Total Trading Balance', value: `${fmtBig(toUSDT(s.totalTradingBalance || s.platformBalance))} USDT`, color: '#fff' },
-                    { label: 'Total Earnings Paid', value: `${fmtBig(toUSDT(s.totalEarningsPaid || s.totalWithdrawn))} USDT`, color: THEME.color.green },
+                    { label: 'Total Trading Balance', value: `${fmtBig(toUSDT(s.totalTradingBalance ?? s.platformBalance))} USDT`, color: '#fff' },
+                    { label: 'Total Earnings Paid', value: `${fmtBig(toUSDT(s.totalEarningsPaid ?? s.totalWithdrawn))} USDT`, color: THEME.color.green },
                     { label: 'Total Staked', value: `${fmtBig(toUSDT(s.totalStaked))} USDT`, color: THEME.color.blue2 },
                     { label: 'Pending Withdrawals', value: s.pendingWithdrawals || 0, color: THEME.color.gold },
                   ].map((row, i, arr) => (

@@ -7,9 +7,6 @@ const AiInvestment = require('../models/AiInvestment');
 const Setting = require('../models/Setting');
 const Trader = require('../models/Trader');
 const Stake = require('../models/Stake');
-const Loan = require('../models/Loan');
-const CopyTrade = require('../models/CopyTrade');
-const Trade = require('../models/Trade');
 const PayoutBatch = require('../models/PayoutBatch');
 const Ticket = require('../models/Ticket');
 const DistributionWallet = require('../models/DistributionWallet');
@@ -801,57 +798,6 @@ router.get('/distribution/history', auth, async (req, res) => {
   try {
     const batches = await DistributionBatch.find().sort({ createdAt: -1 }).limit(50);
     res.json({ success: true, data: batches });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/admin/reset-test-data — zero every account's balance fields and
-// clear all activity records (transactions, AI investments, withdrawals,
-// stakes, loans, copy trades, manual trades). Keeps User/Balance documents
-// (wallet logins) intact so connected wallets aren't logged out.
-router.post('/reset-test-data', auth, async (req, res) => {
-  try {
-    const zeroFields = {
-      tradingBalance: 0,
-      totalDeposited: 0,
-      totalWithdrawn: 0,
-      aiEarnings: 0,
-      stakingEarnings: 0,
-      referralEarnings: 0,
-      stakedAmount: 0,
-      totalAiInvested: 0,
-      pendingWithdrawal: 0,
-      withdrawnEarnings: 0,
-      adminEarningsOverride: 0,
-      stakingReferralEarned: 0,
-      stakingReferralClaimable: 0,
-    };
-
-    const [balances, transactions, aiInvestments, withdrawals, stakes, loans, copyTrades, trades] = await Promise.all([
-      Balance.updateMany({}, { $set: zeroFields }),
-      Transaction.deleteMany({}),
-      AiInvestment.deleteMany({}),
-      Withdrawal.deleteMany({}),
-      Stake.deleteMany({}),
-      Loan.deleteMany({}),
-      CopyTrade.deleteMany({}),
-      Trade.deleteMany({}),
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        balancesZeroed: balances.modifiedCount,
-        transactionsDeleted: transactions.deletedCount,
-        aiInvestmentsDeleted: aiInvestments.deletedCount,
-        withdrawalsDeleted: withdrawals.deletedCount,
-        stakesDeleted: stakes.deletedCount,
-        loansDeleted: loans.deletedCount,
-        copyTradesDeleted: copyTrades.deletedCount,
-        tradesDeleted: trades.deletedCount,
-      },
-    });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
