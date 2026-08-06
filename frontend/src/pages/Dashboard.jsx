@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useApp } from '../App.jsx';
-import { getTransactions, compound, getAiInvestments, requestWithdrawal, getWithdrawalStatus, deposit as syncDeposit } from '../api.js';
+import { getTransactions, compound, getAiInvestments, getWithdrawalStatus, deposit as syncDeposit } from '../api.js';
 import { useAlphaNodes, useUserBalance, useUserWithdrawals, fetchOnChainBalance } from '../hooks/useContract.js';
 import { CONTRACT_ADDRESS } from '../config.js';
 import { TxSuccess } from '../components/TxSuccess.jsx';
@@ -96,10 +96,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [txs, setTxs] = useState([]);
   const [depositAmt, setDepositAmt] = useState('');
-  const [withdrawAmt, setWithdrawAmt] = useState('');
   const [loading, setLoading] = useState('');
   const [msg, setMsg] = useState('');
-  const [activeTab, setActiveTab] = useState('deposit');
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [activeInvestments, setActiveInvestments] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -245,39 +243,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleWithdraw = async () => {
-    const usd = parseFloat(withdrawAmt);
-    if (!usd || usd <= 0) return showMsg('Enter a valid amount', true);
-    const bnbAmt = usd / bnbPrice;
-    const avail = tradingBal;
-    if (bnbAmt > avail) return showMsg(`Insufficient balance (have ${avail.toFixed(6)} BNB)`, true);
-    if (!address) return showMsg('Wallet not connected', true);
-    setLoading('withdraw');
-    try {
-      const r = await requestWithdrawal({ address, amount: bnbAmt });
-      if (!r.data.success) return showMsg(r.data.error || 'Withdrawal failed', true);
-      setWithdrawAmt('');
-      setShowFundsModal(false);
-      setMsg('');
-      const auto = r.data.autoProcessed;
-      setSuccessTx({
-        title: auto ? 'Withdrawal Sent!' : 'Withdrawal Requested!',
-        subtitle: auto
-          ? `${bnbAmt.toFixed(6)} BNB sent to your wallet`
-          : 'Pending admin approval — you\'ll be notified when processed',
-        amount: `-$${usd.toFixed(2)}`,
-        hash: r.data.txHash,
-      });
-      await refreshAll();
-      fetchTxs();
-      fetchWithdrawals();
-    } catch (e) {
-      showMsg(e.message || 'Withdrawal failed', true);
-    } finally {
-      setLoading('');
-    }
-  };
-
   const handleCompound = async () => {
     setLoading('compound');
     try {
@@ -413,7 +378,7 @@ export default function Dashboard() {
         </div>
         <div style={{ fontSize: 12, color: '#666', marginTop: 5, marginBottom: 16 }}>{fmt(tradingBal)} BNB</div>
         <button
-          onClick={() => { setActiveTab('deposit'); setShowFundsModal(true); }}
+          onClick={() => setShowFundsModal(true)}
           style={{
             width: '100%', padding: '11px 0', borderRadius: 8, fontSize: 11, fontWeight: 800,
             background: 'rgba(59,158,255,0.07)', border: '1px solid rgba(59,158,255,0.2)',
@@ -423,16 +388,17 @@ export default function Dashboard() {
         >
           Add Funds
         </button>
-        <button
-          onClick={() => { setActiveTab('withdraw'); setShowFundsModal(true); }}
+        <div
           style={{
             width: '100%', padding: '11px 0', borderRadius: 8, fontSize: 11, fontWeight: 800,
             background: 'rgba(0,192,118,0.07)', border: '1px solid rgba(0,192,118,0.2)',
-            color: '#00c076', cursor: 'pointer', letterSpacing: 2, textTransform: 'uppercase',
+            color: '#00c076', letterSpacing: 2, textTransform: 'uppercase',
+            textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}
         >
-          Take Profit
-        </button>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00c076' }} />
+          Auto Send Daily
+        </div>
       </div>
 
       {/* EARNINGS + WITHDRAWN */}
@@ -539,7 +505,7 @@ export default function Dashboard() {
               width: '100%', maxWidth: 460,
               background: '#111',
               border: `1px solid rgba(255,255,255,0.07)`,
-              borderTop: `2px solid ${activeTab === 'deposit' ? '#fcd535' : '#00c076'}`,
+              borderTop: '2px solid #fcd535',
               borderRadius: 18,
               boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
               overflow: 'hidden',
@@ -551,7 +517,7 @@ export default function Dashboard() {
               padding: '10px 20px 0',
             }}>
               <div style={{ fontSize: 15, fontWeight: 800 }}>
-                {activeTab === 'deposit' ? '↓ Add Funds' : '↑ Take Profit'}
+                ↓ Add Funds
               </div>
               <button
                 onClick={() => setShowFundsModal(false)}
@@ -563,31 +529,7 @@ export default function Dashboard() {
               >✕</button>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', margin: '12px 20px 0' }}>
-              {['deposit', 'withdraw'].map(tab => {
-                const isActive = activeTab === tab;
-                const color = tab === 'deposit' ? '#fcd535' : '#00c076';
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    style={{
-                      flex: 1, padding: '10px 0', background: 'none', border: 'none',
-                      fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                      color: isActive ? color : '#444',
-                      borderBottom: isActive ? `2px solid ${color}` : '2px solid transparent',
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    {tab === 'deposit' ? '↓ Add Funds' : '↑ Take Profit'}
-                  </button>
-                );
-              })}
-            </div>
-
-            {activeTab === 'deposit' && (
-              <div style={{ padding: '16px 20px 32px' }}>
+            <div style={{ padding: '16px 20px 32px' }}>
                 {/* Balance row + MAX */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontSize: 11, color: '#555' }}>
@@ -662,90 +604,9 @@ export default function Dashboard() {
                   className="btn-primary"
                   onClick={handleDeposit}
                   disabled={loading === 'deposit' || !depositAmt || parseFloat(depositAmt) < 100}
-                  style={{ width: '100%', borderRadius: 10, padding: '13px 0', fontSize: 13 }}
+                  style={{ width: '100%', borderRadius: 10, padding: '13px 0', fontSize: 13, marginBottom: 10 }}
                 >
                   {loading === 'deposit' ? 'Awaiting confirmation...' : `Add Funds${depositAmt ? ` $${depositAmt}` : ''}`}
-                </button>
-              </div>
-            )}
-
-            {activeTab === 'withdraw' && (
-              <div style={{ padding: '16px 20px 32px' }}>
-                {/* Available + MAX */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <span style={{ fontSize: 11, color: '#555' }}>
-                    Available:{' '}
-                    <span style={{ color: '#00c076', fontWeight: 700 }}>${fmtUsd(tradingBal, bnbPrice)}</span>
-                    <span style={{ color: '#444', marginLeft: 6 }}>({fmt(tradingBal)} BNB)</span>
-                  </span>
-                  <button
-                    onClick={() => setWithdrawAmt((tradingBal * bnbPrice).toFixed(2))}
-                    style={{
-                      fontSize: 10, fontWeight: 800, color: '#00c076', background: 'rgba(0,192,118,0.08)',
-                      border: '1px solid rgba(0,192,118,0.2)', borderRadius: 5, padding: '3px 8px',
-                      cursor: 'pointer', letterSpacing: 0.5,
-                    }}
-                  >
-                    MAX
-                  </button>
-                </div>
-
-                {/* Quick amounts */}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                  {[1, 10, 25, 50].map(v => (
-                    <button
-                      key={v}
-                      onClick={() => setWithdrawAmt(String(v))}
-                      style={{
-                        flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                        background: withdrawAmt === String(v) ? 'rgba(0,192,118,0.12)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${withdrawAmt === String(v) ? 'rgba(0,192,118,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                        color: withdrawAmt === String(v) ? '#00c076' : '#555',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ${v}
-                    </button>
-                  ))}
-                </div>
-
-                {/* USD input */}
-                <div style={{ position: 'relative', marginBottom: 8 }}>
-                  <span style={{
-                    position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-                    fontSize: 14, fontWeight: 700, color: '#555', pointerEvents: 'none',
-                  }}>$</span>
-                  <input
-                    type="number" placeholder="0" value={withdrawAmt}
-                    onChange={e => setWithdrawAmt(e.target.value)}
-                    style={{
-                      width: '100%', background: '#0d0d0d',
-                      border: `1px solid ${withdrawAmt && parseFloat(withdrawAmt) > aiEarnings * bnbPrice ? 'rgba(255,77,77,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                      borderRadius: 10, padding: '11px 14px 11px 26px', color: '#fff', fontSize: 14,
-                      outline: 'none', fontWeight: 700, boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-
-                {/* BNB equivalent preview */}
-                {withdrawAmt && parseFloat(withdrawAmt) > 0 && (
-                  <div style={{ fontSize: 11, color: '#555', marginBottom: 12 }}>
-                    ≈ <span style={{ color: '#00c076', fontWeight: 700 }}>
-                      {(parseFloat(withdrawAmt) / bnbPrice).toFixed(6)} BNB
-                    </span>
-                    <span style={{ color: '#333', marginLeft: 8 }}>→ pending admin approval</span>
-                    {parseFloat(withdrawAmt) / bnbPrice > tradingBal && (
-                      <span style={{ color: '#ff4d4d', marginLeft: 10, fontWeight: 700 }}>Exceeds balance</span>
-                    )}
-                  </div>
-                )}
-
-                <button
-                  className="btn-primary" onClick={handleWithdraw}
-                  disabled={loading === 'withdraw' || !withdrawAmt || parseFloat(withdrawAmt) <= 0}
-                  style={{ width: '100%', borderRadius: 10, padding: '12px 0', fontSize: 13, marginBottom: 10 }}
-                >
-                  {loading === 'withdraw' ? (loading === 'withdraw' ? 'Confirming...' : 'Processing...') : `Take Profit${withdrawAmt ? ` $${withdrawAmt}` : ''}`}
                 </button>
 
                 <button
@@ -759,7 +620,6 @@ export default function Dashboard() {
                   {loading === 'compound' ? '...' : '↻ Compound All Earnings'}
                 </button>
               </div>
-            )}
             {/* Drag handle */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 12px' }}>
               <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)' }} />
